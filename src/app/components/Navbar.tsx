@@ -1,4 +1,4 @@
-import { Code2, Play, Settings, Moon, Sun, Save, Bug } from "lucide-react";
+import { Code2, Play, Settings, Moon, Sun, Bug, PanelLeft } from "lucide-react";
 import { Button } from "./ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 import { useTheme } from "next-themes";
@@ -11,9 +11,20 @@ interface NavbarProps {
   onDebug?: () => void;
   isCompiling: boolean;
   hasUnsavedChanges?: boolean;
+  isSidebarVisible: boolean;
+  onToggleSidebar: () => void;
 }
 
-export function Navbar({ currentFile, onCompile, onRun, onDebug, isCompiling, hasUnsavedChanges }: NavbarProps) {
+export function Navbar({ 
+  currentFile, 
+  onCompile, 
+  onRun, 
+  onDebug, 
+  isCompiling, 
+  hasUnsavedChanges,
+  isSidebarVisible,
+  onToggleSidebar
+}: NavbarProps) {
   const { theme, setTheme } = useTheme();
 
   return (
@@ -33,6 +44,24 @@ export function Navbar({ currentFile, onCompile, onRun, onDebug, isCompiling, ha
               VoltC
             </h1>
           </div>
+
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onToggleSidebar}
+                  className={`rounded-xl transition-all duration-300 ${isSidebarVisible ? "bg-purple-500/10 text-purple-600 dark:text-purple-400" : "hover:bg-white/10 dark:hover:bg-white/10"}`}
+                >
+                  <PanelLeft className="w-5 h-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                {isSidebarVisible ? "Hide" : "Show"} Explorer (Ctrl+B)
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
 
         {/* Center: Current File */}
