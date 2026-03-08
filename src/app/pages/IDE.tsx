@@ -617,7 +617,6 @@ export function IDE() {
         onCompile={handleCompile}
         onRun={handleRun}
         onDebug={handleDebug}
-        onFormat={handleFormat}
         onRepoSelect={(repo) => {
           if (!repo || !repo.owner) {
             toast.error("Invalid repository data");
@@ -678,6 +677,7 @@ export function IDE() {
                     onMount={(editor) => {
                       editorRef.current = editor;
                     }}
+                    onFormat={(code) => formatCCode(code)}
                   />
                 </div>
               </Panel>
