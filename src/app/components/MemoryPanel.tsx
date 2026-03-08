@@ -112,43 +112,57 @@ export const MemoryPanel = ({
   step: number,
   onNext?: () => void
 }) => {
-  const current = trace[step] || {
-    registers: { R0: 0, R1: 0, R2: 0, R3: 0, BP: 1024, SP: 1024 },
-    stack: [],
-    vars: [],
-    stats: { registersUsed: 0, totalRegisters: 6, instructionCount: 0, stackDepth: 0, cycles: 0, heapUsage: 0, stackUsage: 0 },
-    instructions: [],
-    pc: 0,
-    func: "main"
-  };
+  // Get current step data from trace, or use empty state if no trace
+  const current = trace && trace.length > 0 && step >= 0 && step < trace.length 
+    ? trace[step] 
+    : null;
 
   // Process trace into component-friendly data
-  const registers = {
-    R0: current.r0 || 0,
-    R1: current.r1 || 0,
-    R2: current.r2 || 0,
-    R3: current.r3 || 0,
-    BP: current.bp,
-    SP: current.sp
+  // STEP 1: Registers - Extract real register values from trace data
+  const registers = current ? {
+    R0: typeof current.r0 === 'number' ? current.r0 : 0,
+    R1: typeof current.r1 === 'number' ? current.r1 : 0,
+    R2: typeof current.r2 === 'number' ? current.r2 : 0,
+    R3: typeof current.r3 === 'number' ? current.r3 : 0,
+    BP: typeof current.bp === 'number' ? current.bp : (current.sp_max || 1024),
+    SP: typeof current.sp === 'number' ? current.sp : (current.sp_max || 1024)
+  } : {
+    R0: 0,
+    R1: 0,
+    R2: 0,
+    R3: 0,
+    BP: 1024,
+    SP: 1024
   };
 
-  const variables = current.vars || [];
+  const variables = current?.vars || [];
 
   // Reconstruct call stack from BP changes or use provided func info
   // For now, let's use a simplified stack frame list
-  const stackFrames = [current.func];
+  const stackFrames = current?.func ? [current.func] : [];
 
-  const stats = {
-    registersUsed: (current.r0 !== 0 ? 1 : 0) + (current.r1 !== 0 ? 1 : 0) + (current.r2 !== 0 ? 1 : 0) + (current.r3 !== 0 ? 1 : 0) + 2,
+  const stats = current ? {
+    registersUsed: ((current.r0 !== 0 && current.r0 !== undefined) ? 1 : 0) + 
+                   ((current.r1 !== 0 && current.r1 !== undefined) ? 1 : 0) + 
+                   ((current.r2 !== 0 && current.r2 !== undefined) ? 1 : 0) + 
+                   ((current.r3 !== 0 && current.r3 !== undefined) ? 1 : 0) + 2, // BP and SP always used
     totalRegisters: 6,
     instructionCount: trace.length,
-    stackDepth: Math.max(0, (1024 - (current.sp || 1024)) / 10),
-    cycles: current.tick || 0,
+    stackDepth: current.sp_max && current.sp ? Math.max(0, Math.floor((current.sp_max - current.sp) / 4)) : 0,
+    cycles: typeof current.tick === 'number' ? current.tick : 0,
     heapUsage: 0,
-    stackUsage: Math.round(((1024 - (current.sp || 1024)) / 1024) * 100) || 0
+    stackUsage: current.sp_max && current.sp ? Math.round(((current.sp_max - current.sp) / current.sp_max) * 100) : 0
+  } : {
+    registersUsed: 0,
+    totalRegisters: 6,
+    instructionCount: 0,
+    stackDepth: 0,
+    cycles: 0,
+    heapUsage: 0,
+    stackUsage: 0
   };
 
-  const allInstructions = trace.map(t => t.op); // This is just Opcode strings for now
+  const allInstructions = trace && trace.length > 0 ? trace.map(t => t.op || 'UNKNOWN') : []; // This is just Opcode strings for now
   // Realistically we'd want the full source string but op is okay
 
   return (
@@ -163,11 +177,11 @@ export const MemoryPanel = ({
       {/* Column 2: Stats & Timeline */}
       <div className="space-y-4 flex flex-col min-h-[500px] min-w-0 overflow-hidden">
         <ExecutionStats stats={stats} />
-        <MemoryLayout stackDepth={1024 - current.sp} totalSize={1024} />
+        <MemoryLayout stackDepth={current?.sp_max && current?.sp ? current.sp_max - current.sp : 0} totalSize={current?.sp_max || 1024} />
         <div className="flex-1 min-h-[300px]">
           <InstructionTimeline
-            instructions={trace.map(t => `${t.op} ...`)}
-            currentIdx={step}
+            instructions={allInstructions.length > 0 ? allInstructions : ['No instructions']}
+            currentIdx={step >= 0 && step < allInstructions.length ? step : 0}
             onStep={onNext}
           />
         </div>
