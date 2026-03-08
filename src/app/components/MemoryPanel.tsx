@@ -77,7 +77,7 @@ export const MemoryLayout = ({ stackDepth, totalSize }: { stackDepth: number, to
         <Layers size={18} />
         <h3 className="font-bold uppercase tracking-wider text-sm">Memory Map</h3>
       </div>
-      <div className="h-[150px] w-full bg-black/30 rounded-xl relative overflow-hidden border border-white/10">
+      <div className="h-[150px] w-full bg-white/70 dark:bg-black/30 rounded-xl relative overflow-hidden border border-black/5 dark:border-white/10">
         {/* Stack Segment */}
         <motion.div
           initial={{ height: 0 }}
@@ -90,9 +90,11 @@ export const MemoryLayout = ({ stackDepth, totalSize }: { stackDepth: number, to
 
         {/* Free space */}
         <div className="absolute inset-x-0 bottom-0 h-full flex flex-col justify-end pointer-events-none">
-          <div className="p-4 flex flex-col items-center opacity-20">
-            <Database size={24} className="text-gray-500 mb-2" />
-            <span className="text-[10px] text-gray-600 font-bold uppercase tracking-widest">Available</span>
+          <div className="p-4 flex flex-col items-center opacity-30">
+            <Database size={24} className="text-gray-500 dark:text-gray-400 mb-2" />
+            <span className="text-[10px] text-gray-700 dark:text-gray-400 font-bold uppercase tracking-widest">
+              Available
+            </span>
           </div>
         </div>
       </div>
