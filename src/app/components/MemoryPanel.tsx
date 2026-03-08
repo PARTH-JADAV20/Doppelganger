@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Play, SkipForward, ArrowRight, Layers, Database } from "lucide-react";
+import { Play, SkipForward, ArrowRight, Layers, Database, ChevronLeft, ChevronRight, RotateCcw } from "lucide-react";
 import { RegisterPanel, StackPanel, VariableTable, ExecutionStats } from "./DebuggerSegments";
 
 // --- Instruction Timeline Panel ---
@@ -55,36 +55,6 @@ export const InstructionTimeline = ({
             <span className="text-[10px] text-gray-500 dark:text-gray-400">
               Step {currentIdx + 1} / {trace.length}
             </span>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          {onPrevStep && (
-            <button
-              onClick={onPrevStep}
-              disabled={!trace || currentIdx <= 0}
-              className={`p-1 px-3 rounded-lg border flex items-center gap-2 transition-all active:scale-95 shrink-0 ${!trace || currentIdx <= 0
-                ? "bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 border-gray-300 dark:border-gray-700 cursor-not-allowed"
-                : "bg-blue-100 dark:bg-blue-500/20 hover:bg-blue-200 dark:hover:bg-blue-500/30 text-blue-700 dark:text-blue-400 border-blue-300 dark:border-blue-500/30"
-                }`}
-            >
-              <SkipForward size={14} className="rotate-180" />
-              <span className="text-[10px] font-bold uppercase">Prev</span>
-            </button>
-          )}
-          {onStep && (
-            <button
-              onClick={onStep}
-              disabled={!trace || currentIdx >= trace.length - 1}
-              className={`p-1 px-3 rounded-lg border flex items-center gap-2 transition-all active:scale-95 shrink-0 ${!trace || currentIdx >= trace.length - 1
-                ? "bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 border-gray-300 dark:border-gray-700 cursor-not-allowed"
-                : "bg-green-100 dark:bg-green-500/20 hover:bg-green-200 dark:hover:bg-green-500/30 text-green-700 dark:text-green-400 border-green-300 dark:border-green-500/30"
-                }`}
-            >
-              <SkipForward size={14} />
-              <span className="text-[10px] font-bold uppercase">
-                {!trace || currentIdx >= trace.length - 1 ? "End" : "Step"}
-              </span>
-            </button>
           )}
         </div>
       </div>
@@ -264,6 +234,102 @@ export const MemoryLayout = ({
   );
 };
 
+// --- Sticky Control Bar ---
+const MemoryControls = ({ 
+  step, 
+  total, 
+  onNext, 
+  onPrev, 
+  onReset,
+  current
+}: { 
+  step: number, 
+  total: number, 
+  onNext?: () => void, 
+  onPrev?: () => void,
+  onReset?: () => void,
+  current?: any
+}) => {
+  return (
+    <div className="sticky top-0 z-20 bg-white/60 dark:bg-[#0b0b12]/80 backdrop-blur-xl border-b border-black/5 dark:border-white/10 px-4 py-2 flex items-center justify-between mb-4 -mx-2 mt-[-8px]">
+      <div className="flex items-center gap-4">
+        <div className="flex items-center gap-1">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={onPrev} 
+            disabled={step <= 0}
+            className="h-8 w-8 rounded-lg hover:bg-blue-500/10 text-blue-600 dark:text-blue-400 disabled:opacity-30"
+          >
+            <ChevronLeft size={18} />
+          </Button>
+          
+          <div className="flex flex-col items-center px-4 min-w-[120px]">
+            <span className="text-[10px] uppercase tracking-widest font-black text-gray-400 dark:text-gray-500 leading-none mb-1">Step</span>
+            <div className="flex items-center gap-1.5">
+               <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{step + 1}</span>
+               <span className="text-xs text-gray-400 dark:text-gray-600">/</span>
+               <span className="text-xs font-medium text-gray-400 dark:text-gray-600">{total}</span>
+            </div>
+          </div>
+
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={onNext} 
+            disabled={step >= total - 1}
+            className="h-8 w-8 rounded-lg hover:bg-green-500/10 text-green-600 dark:text-green-400 disabled:opacity-30"
+          >
+            <ChevronRight size={18} />
+          </Button>
+        </div>
+
+        {current && (
+          <div className="flex items-center gap-4 pl-4 border-l border-black/5 dark:border-white/10">
+            <div className="flex flex-col pr-2">
+              <span className="text-[9px] uppercase font-bold text-gray-400 leading-none mb-1">Instruction</span>
+              <span className="text-base font-black text-green-600 dark:text-green-500 tracking-tighter leading-none uppercase font-mono">
+                {current.op || 'NOP'}
+              </span>
+            </div>
+            
+            <div className="hidden md:flex items-center gap-4 border-l border-black/5 dark:border-white/10 pl-4">
+              <div className="flex flex-col">
+                <span className="text-[9px] uppercase font-bold text-gray-400">PC</span>
+                <span className="text-xs font-mono font-bold text-purple-600 dark:text-purple-400">{current.pc ?? 0}</span>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-[9px] uppercase font-bold text-gray-400">Tick</span>
+                <span className="text-xs font-mono font-bold text-orange-600 dark:text-orange-400">{current.tick ?? 0}</span>
+              </div>
+              {current.func && current.func !== 'unknown' && (
+                <div className="flex flex-col">
+                  <span className="text-[9px] uppercase font-bold text-gray-400">Function</span>
+                  <span className="text-xs font-bold text-blue-600 dark:text-blue-400 truncate max-w-[80px]">@{current.func}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="flex items-center gap-2">
+        <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={onReset}
+            className="h-8 px-3 text-[11px] font-bold border-white/10 hover:bg-orange-500/10 text-orange-400 rounded-lg flex items-center gap-1.5"
+        >
+          <RotateCcw size={14} />
+          RESET
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+import { Button } from "./ui/button";
+
 // --- Main Memory Panel Container ---
 export const MemoryPanel = ({
   trace,
@@ -278,97 +344,124 @@ export const MemoryPanel = ({
   onPrev?: () => void,
   onJump?: (stepIndex: number) => void
 }) => {
+  const handleReset = () => {
+    if (onJump) onJump(0);
+  };
+
   // Get current step data from trace, or use empty state if no trace
   const current = trace && trace.length > 0 && step >= 0 && step < trace.length
     ? trace[step]
     : null;
 
   // Process trace into component-friendly data
-  // STEP 1: Registers - Extract real register values from trace data
+  // STEP 1: Registers - Extract real register values from trace data (handle various possible keys)
+  const getReg = (key: string) => {
+    if (!current) return 0;
+    const lower = key.toLowerCase();
+    const upper = key.toUpperCase();
+    return typeof current[lower] === 'number' ? current[lower] : 
+           (typeof current[upper] === 'number' ? current[upper] : 0);
+  };
+
   const registers = current ? {
-    R0: typeof current.r0 === 'number' ? current.r0 : 0,
-    R1: typeof current.r1 === 'number' ? current.r1 : 0,
-    R2: typeof current.r2 === 'number' ? current.r2 : 0,
-    R3: typeof current.r3 === 'number' ? current.r3 : 0,
-    BP: typeof current.bp === 'number' ? current.bp : (current.sp_max || 1024),
-    SP: typeof current.sp === 'number' ? current.sp : (current.sp_max || 1024)
+    EAX: getReg('EAX') || getReg('R0') || getReg('rax'),
+    EBX: getReg('EBX') || getReg('R1') || getReg('rbx'),
+    ECX: getReg('ECX') || getReg('R2') || getReg('rcx'),
+    EDX: getReg('EDX') || getReg('R3') || getReg('rdx'),
+    EDI: getReg('EDI') || getReg('esi'), // Sometimes swapped or simple names used
+    ESI: getReg('ESI') || getReg('edi'),
+    BP: typeof current.bp === 'number' ? current.bp : 
+        (typeof current.BP === 'number' ? current.BP : 
+         (typeof current.ebp === 'number' ? current.ebp : 
+          (typeof current.RBP === 'number' ? current.RBP : (current.sp_max || 1024)))),
+    SP: typeof current.sp === 'number' ? current.sp : 
+        (typeof current.SP === 'number' ? current.SP : 
+         (typeof current.esp === 'number' ? current.esp : 
+          (typeof current.RSP === 'number' ? current.RSP : (current.sp_max || 1024))))
   } : {
-    R0: 0,
-    R1: 0,
-    R2: 0,
-    R3: 0,
-    BP: 1024,
-    SP: 1024
+    EAX: 0, EBX: 0, ECX: 0, EDX: 0, EDI: 0, ESI: 0, BP: 1024, SP: 1024
   };
 
   // STEP 5: Variables - Extract and map variables from trace data
-  // Backend sends: {name, addr, val, offset}
-  // Component expects: {name, address, value}
-  const variables = current?.vars
-    ? current.vars.map((v: any) => ({
-      name: v.name || 'unknown',
-      address: v.addr || (typeof v.offset === 'number' && current.bp ? `0x${(current.bp + v.offset).toString(16).toUpperCase()}` : '0x0'),
-      value: typeof v.val === 'number' ? v.val : (typeof v.value === 'number' ? v.value : 0)
-    }))
-    : [];
-
-  // STEP 3: Stack Frames - Reconstruct call stack dynamically from trace data
-  // The VM uses BP (Base Pointer) to track stack frames
-  // When a function is called, BP is saved and set to current SP (lower value)
-  // When returning, BP is restored (higher value)
-  // So: Lower BP = deeper call, Higher BP = caller
-  const reconstructCallStack = (): string[] => {
-    if (!trace || trace.length === 0 || !current) return [];
-
-    const callStack: string[] = [];
-    const currentBP = typeof current.bp === 'number' ? current.bp : null;
-
-    if (currentBP === null) {
-      // Fallback: just use current function if BP is not available
-      return current.func ? [current.func] : [];
-    }
-
-    // Collect all unique BP values and their corresponding functions
-    // Map BP -> function name
-    const bpToFunc = new Map<number, string>();
-
-    // Scan through trace to build BP -> function mapping
-    for (let i = 0; i <= step; i++) {
-      const stepData = trace[i];
-      if (!stepData || typeof stepData.bp !== 'number' || !stepData.func) continue;
-
-      const stepBP = stepData.bp;
-      const stepFunc = stepData.func;
-
-      // Only update if this BP hasn't been seen or if we have a better function name
-      if (!bpToFunc.has(stepBP) || stepFunc !== 'unknown') {
-        bpToFunc.set(stepBP, stepFunc);
+  const getVariables = () => {
+    if (!trace || trace.length === 0 || step < 0) return [];
+    
+    // Search for variables object/array in current or previous steps
+    let rawVars: any = null;
+    
+    // Look back to find the most RECENT step that has NON-EMPTY variables
+    for (let i = Math.min(step, trace.length - 1); i >= 0; i--) {
+      const s = trace[i];
+      if (!s) continue;
+      const v = s.vars || s.Variables || s.VariablesList || s.variables || 
+                s.locals || s.localsList || s.locals_list || 
+                s.globals || s.globalsList || s.globals_list ||
+                s.env || s.frame || s.members || s.data;
+      
+      // Found something? Only break if it's not empty!
+      if (v) {
+          if (Array.isArray(v) && v.length > 0) {
+              rawVars = v;
+              break;
+          } else if (typeof v === 'object' && Object.keys(v).length > 0) {
+              rawVars = v;
+              break;
+          }
       }
     }
 
-    // Build call stack by finding all BP values >= currentBP (callers)
-    // and sorting them (higher BP = caller, lower BP = callee)
-    const bps = Array.from(bpToFunc.keys())
-      .filter(bp => bp >= currentBP) // Only include current frame and callers
-      .sort((a, b) => b - a); // Sort descending (caller first)
+    if (!rawVars) return [];
 
-    // Build the call stack from BP chain
-    for (const bp of bps) {
-      const funcName = bpToFunc.get(bp);
-      if (funcName && funcName !== 'unknown') {
-        // Avoid duplicates
-        if (callStack.length === 0 || callStack[callStack.length - 1] !== funcName) {
-          callStack.push(funcName);
+    // Handle Array format: [{name, val}, ...]
+    if (Array.isArray(rawVars)) {
+      return (rawVars as any[]).map((v: any) => {
+        const name = v.name || v.Name || v.var || 'var';
+        const value = typeof v.val === 'number' ? v.val : (typeof v.value === 'number' ? v.value : (typeof v.Value === 'number' ? v.Value : 0));
+        let address = v.addr || v.Address || v.address || v.offset || v.Offset;
+        
+        if (typeof address === 'number') {
+            const bp = typeof current.bp === 'number' ? current.bp : 
+                      (typeof current.ebp === 'number' ? current.ebp : 
+                      (typeof current.BP === 'number' ? current.BP : 0));
+            // Format address
+            if (address < 2048 && address > -2048) { 
+                address = `0x${(bp + address).toString(16).toUpperCase()}`;
+            } else {
+                address = `0x${address.toString(16).toUpperCase()}`;
+            }
         }
-      }
+        return { name, address: String(address), value };
+      });
+    } 
+    
+    // Handle Object/Map format: {"a": 10, "b": 20}
+    if (typeof rawVars === 'object') {
+      return Object.entries(rawVars).map(([name, value]) => ({
+        name,
+        address: 'N/A', // Objects don't usually include addresses in this format
+        value: typeof value === 'number' ? value : 0
+      }));
     }
 
-    // If no call stack found, at least show current function
-    if (callStack.length === 0 && current.func && current.func !== 'unknown') {
-      callStack.push(current.func);
+    return [];
+  };
+
+  const variables = getVariables();
+  console.log("TRACE STEP:", current);
+  console.log("VARS:", current?.vars);
+
+  // STEP 3: Stack Frames - use server-emitted callStack for accuracy
+  const reconstructCallStack = (): string[] => {
+    if (!current) return [];
+
+    // Server now emits callStack directly on each step
+    if (Array.isArray(current.callStack) && current.callStack.length > 0) {
+      return [...current.callStack];
     }
 
-    return callStack;
+    // Fallback: use func name alone
+    const funcName = current.func && current.func !== 'unknown' ? current.func : 'main';
+    return [funcName];
   };
 
   const stackFrames = reconstructCallStack();
@@ -404,7 +497,7 @@ export const MemoryPanel = ({
 
   const stats = current ? {
     registersUsed: calculateRegistersUsed(),
-    totalRegisters: 6, // Fixed: R0, R1, R2, R3, BP, SP
+    totalRegisters: 8, // Count: EAX, EBX, ECX, EDX, EDI, ESI, BP, SP
     instructionCount: step + 1, // Number of instructions executed so far (0-indexed step + 1)
     stackDepth: calculateStackDepth(),
     cycles: typeof current.tick === 'number' ? current.tick : step, // Use tick if available, otherwise use step as cycle count
@@ -424,7 +517,17 @@ export const MemoryPanel = ({
   // Realistically we'd want the full source string but op is okay
 
   return (
-    <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4 p-1 pb-10">
+    <div className="w-full p-1 pb-10 relative">
+      <MemoryControls 
+        step={step} 
+        total={trace.length} 
+        onNext={onNext} 
+        onPrev={onPrev} 
+        onReset={handleReset}
+        current={current}
+      />
+      
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
       {/* Column 1: Core State */}
       <div className="space-y-4 min-w-0 overflow-hidden">
         <RegisterPanel registers={registers} />
@@ -454,6 +557,7 @@ export const MemoryPanel = ({
             trace={trace}
           />
         </div>
+      </div>
       </div>
     </div>
   );
