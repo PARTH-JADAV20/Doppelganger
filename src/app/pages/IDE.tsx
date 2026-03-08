@@ -529,6 +529,8 @@ export function IDE() {
         onDebug={handleDebug}
         isCompiling={isCompiling}
         hasUnsavedChanges={hasUnsavedChanges}
+        isSidebarVisible={isSidebarVisible}
+        onToggleSidebar={() => setIsSidebarVisible(!isSidebarVisible)}
       />
 
       <div className="flex-1 min-h-0 flex overflow-hidden">
@@ -543,30 +545,7 @@ export function IDE() {
           fileTree={fileTree}
           isVisible={isSidebarVisible}
         />
-
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-          {/* Toggle Sidebar Button */}
-          <div className="px-4 pt-4 pb-0">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setIsSidebarVisible(!isSidebarVisible)}
-                    className="hover:bg-white/10 dark:hover:bg-white/10 rounded-lg"
-                  >
-                    <PanelLeft className="w-4 h-4 mr-2" />
-                    {isSidebarVisible ? "Hide" : "Show"} Explorer
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  Toggle File Explorer (Ctrl+B)
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
-
           {/* Resizable Panels */}
           <div className="flex-1 min-h-0 p-4 pt-2">
             <PanelGroup direction="horizontal" className="h-full">
