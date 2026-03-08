@@ -1,6 +1,6 @@
-import { File, Folder, ChevronRight, ChevronDown, Save, Download, Plus, FolderPlus, Trash2, MoreVertical } from "lucide-react";
+import { File, Folder, ChevronRight, ChevronDown, Download, Plus, FolderPlus, Trash2, MoreVertical } from "lucide-react";
 import { motion } from "motion/react";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "./ui/button";
 import {
   DropdownMenu,
@@ -32,6 +32,16 @@ interface SidebarProps {
   fileTree: FileItem[];
   isVisible: boolean;
 }
+const sortFileItems = (items: FileItem[]) => {
+  return [...items].sort((a, b) => {
+    // Folders come before files
+    if (a.type === "folder" && b.type !== "folder") return -1;
+    if (a.type !== "folder" && b.type === "folder") return 1;
+
+    // Alphabetical sorting within the same type
+    return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+  });
+};
 
 function FileTreeItem({
   item,
@@ -89,7 +99,7 @@ function FileTreeItem({
                 whileHover={{ x: 2 }}
                 onClick={() => setIsOpen(!isOpen)}
                 className="flex-1 flex items-center gap-2 px-3 py-2 text-sm hover:bg-white/5 dark:hover:bg-white/5 rounded-lg transition-colors"
-                
+
               >
                 {isOpen ? (
                   <ChevronDown className="w-4 h-4 text-gray-600 dark:text-gray-400" />
@@ -97,10 +107,10 @@ function FileTreeItem({
                   <ChevronRight className="w-4 h-4 text-gray-600 dark:text-gray-400" />
                 )}
                 <Folder className="w-4 h-4 text-purple-500" />
-                <span className="text-gray-700 dark:text-gray-300">{item.name}</span>
+                <span className="text-gray-700 dark:text-gray-300 whitespace-nowrap">{item.name}</span>
               </motion.button>
             </div>
-            
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -121,7 +131,7 @@ function FileTreeItem({
                   New Folder
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem 
+                <DropdownMenuItem
                   onClick={() => {
                     if (confirm(`Delete folder "${item.name}" and all its contents?`)) {
                       onDeleteFolder(item.path);
@@ -137,8 +147,7 @@ function FileTreeItem({
           </div>
           {isOpen && item.children && (
             <div>
-              {item.children
-                .filter(child => !child.name.startsWith('.'))
+              {sortFileItems(item.children.filter(child => !child.name.startsWith('.')))
                 .map((child) => (
                   <FileTreeItem
                     key={child.path}
@@ -237,23 +246,21 @@ function FileTreeItem({
         <motion.button
           whileHover={{ x: 2 }}
           onClick={() => onFileSelect(item.path)}
-          className={`flex-1 flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-all ${
-            isActive
-              ? "bg-gradient-to-r from-pink-500/10 via-purple-500/10 to-indigo-500/10 border border-purple-500/30 shadow-lg shadow-purple-500/10"
-              : "hover:bg-white/5 dark:hover:bg-white/5"
-          }`}
-          
+          className={`flex-1 flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-all ${isActive
+            ? "bg-gradient-to-r from-pink-500/10 via-purple-500/10 to-indigo-500/10 border border-purple-500/30 shadow-lg shadow-purple-500/10"
+            : "hover:bg-white/5 dark:hover:bg-white/5"
+            }`}
+
         >
           <div className="w-4" />
           <File className={`w-4 h-4 ${isActive ? "text-purple-500" : "text-gray-500 dark:text-gray-400"}`} />
-          <span className={`${isActive ? "text-purple-600 dark:text-purple-400 font-medium" : "text-gray-700 dark:text-gray-300"}`}>
+          <span className={`${isActive ? "text-purple-600 dark:text-purple-400 font-medium" : "text-gray-700 dark:text-gray-300"} whitespace-nowrap`}>
             {item.name}
           </span>
         </motion.button>
       </div>
 
-      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-
+      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity sticky right-0 bg-white/5 dark:bg-[#111122]/60 backdrop-blur-sm rounded-lg">
         <Button
           variant="ghost"
           size="sm"
@@ -281,35 +288,67 @@ function FileTreeItem({
   );
 }
 
-export function Sidebar({ 
-  currentFile, 
-  onFileSelect, 
+export function Sidebar({
+  currentFile,
+  onFileSelect,
   onSaveFile,
   onCreateFile,
   onCreateFolder,
   onDeleteFile,
   onDownloadFile,
   fileTree,
-  isVisible 
+  isVisible
 }: SidebarProps) {
   const [showNewFileDialog, setShowNewFileDialog] = useState(false);
   const [showNewFolderDialog, setShowNewFolderDialog] = useState(false);
   const [newFileName, setNewFileName] = useState("");
   const [newFolderName, setNewFolderName] = useState("");
   const [selectedParentPath, setSelectedParentPath] = useState("");
+  const [contentScrollWidth, setContentScrollWidth] = useState(0);
+
+  // Refs for the sticky horizontal scrollbar sync
+  const vScrollRef = useRef<HTMLDivElement>(null);
+  const hScrollRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const isSyncing = useRef(false);
+
+  useEffect(() => {
+    if (!contentRef.current) return;
+    const ro = new ResizeObserver(() => {
+      setContentScrollWidth(contentRef.current?.scrollWidth ?? 0);
+    });
+    ro.observe(contentRef.current);
+    return () => ro.disconnect();
+  }, []);
+
+  const onVScroll = () => {
+    if (isSyncing.current) return;
+    isSyncing.current = true;
+    if (hScrollRef.current && vScrollRef.current)
+      hScrollRef.current.scrollLeft = vScrollRef.current.scrollLeft;
+    isSyncing.current = false;
+  };
+
+  const onHScroll = () => {
+    if (isSyncing.current) return;
+    isSyncing.current = true;
+    if (vScrollRef.current && hScrollRef.current)
+      vScrollRef.current.scrollLeft = hScrollRef.current.scrollLeft;
+    isSyncing.current = false;
+  };
 
   if (!isVisible) return null;
 
   // Get all folders for the dropdown
   const getAllFolders = (items: FileItem[], prefix = ""): { path: string; label: string }[] => {
     const folders: { path: string; label: string }[] = [{ path: "", label: "Root" }];
-    
+
     const traverse = (items: FileItem[], prefix: string) => {
       items.forEach(item => {
         if (item.type === "folder") {
-          folders.push({ 
-            path: item.path, 
-            label: prefix + item.name 
+          folders.push({
+            path: item.path,
+            label: prefix + item.name
           });
           if (item.children) {
             traverse(item.children, prefix + item.name + "/");
@@ -317,13 +356,13 @@ export function Sidebar({
         }
       });
     };
-    
+
     traverse(items, "");
     return folders;
   };
 
   const folders = getAllFolders(fileTree);
-  
+
   const handleCreateFile = () => {
     if (newFileName) {
       onCreateFile(selectedParentPath, newFileName);
@@ -384,21 +423,39 @@ export function Sidebar({
             </Button>
           </div>
         </div>
-        <div className="space-y-1 flex-1 overflow-y-auto overflow-x-auto hide-scrollbar">
-          {fileTree.map((item) => (
-            <FileTreeItem
-              key={item.path}
-              item={item}
-              currentFile={currentFile}
-              onFileSelect={onFileSelect}
-              onSaveFile={onSaveFile}
-              onDeleteFile={onDeleteFile}
-              onDownloadFile={onDownloadFile}
-              onCreateFile={onCreateFile}
-              onCreateFolder={onCreateFolder}
-              onDeleteFolder={handleDeleteFolder}
-            />
-          ))}
+        {/* Flex column: content scrolls vertically, scrollbar is always pinned at bottom */}
+        <div className="flex-1 min-h-0 flex flex-col">
+          {/* Vertical scroll area — hides native h-scrollbar */}
+          <div
+            ref={vScrollRef}
+            onScroll={onVScroll}
+            className="flex-1 min-h-0 overflow-y-auto overflow-x-auto hide-scrollbar"
+          >
+            <div ref={contentRef} className="space-y-1 min-w-max pr-4">
+              {sortFileItems(fileTree).map((item) => (
+                <FileTreeItem
+                  key={item.path}
+                  item={item}
+                  currentFile={currentFile}
+                  onFileSelect={onFileSelect}
+                  onSaveFile={onSaveFile}
+                  onDeleteFile={onDeleteFile}
+                  onDownloadFile={onDownloadFile}
+                  onCreateFile={onCreateFile}
+                  onCreateFolder={onCreateFolder}
+                  onDeleteFolder={handleDeleteFolder}
+                />
+              ))}
+            </div>
+          </div>
+          {/* Sticky horizontal scrollbar — always visible at bottom, synced with content */}
+          <div
+            ref={hScrollRef}
+            onScroll={onHScroll}
+            className="flex-shrink-0 overflow-x-auto custom-horizontal-scroll"
+          >
+            <div style={{ width: contentScrollWidth, height: 1 }} />
+          </div>
         </div>
       </motion.aside>
 
