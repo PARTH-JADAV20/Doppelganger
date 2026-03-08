@@ -361,7 +361,8 @@ app.get('/auth/github/callback', async (req, res) => {
         sessions.set(sessionId, accessToken);
 
         // Redirect back to frontend with session details
-        res.redirect(`http://localhost:5173?session_id=${sessionId}&username=${username}`);
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+        res.redirect(`${frontendUrl}?session_id=${sessionId}&username=${username}`);
     } catch (err) {
         console.error("GitHub Auth Error:", err.message);
         res.status(500).send("Authentication failed");
