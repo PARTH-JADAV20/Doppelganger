@@ -4,6 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "start": "node server.js",
+    "build": "gcc src/compiler.c -o compiler && gcc src/vm.c -o vm",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

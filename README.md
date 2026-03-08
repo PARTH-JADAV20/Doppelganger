@@ -27,3 +27,26 @@
      GITHUB_CALLBACK=http://localhost:3001/auth/github/callback
      ```
   3. Restart the backend server if it was already running.
+
+  ## Deployment (Render & Vercel)
+  
+  The IDE is ready to be deployed to Render (Backend) and Vercel (Frontend).
+  
+  ### 1. Backend (Render)
+  - Create a new Web Service on Render and point it to the `backend/` directory.
+  - Set the build command to `npm run build` (this will compile the C files).
+  - Set the start command to `npm start`.
+  - Add the following Environment Variables in Render:
+    - `GITHUB_CLIENT_ID`: Your GitHub OAuth Client ID
+    - `GITHUB_CLIENT_SECRET`: Your GitHub OAuth Client Secret
+    - `GITHUB_CALLBACK`: `https://your-render-app-url.onrender.com/auth/github/callback`
+  
+  ### 2. Frontend (Vercel)
+  - Deploy the root directory to Vercel (it uses Next.js).
+  - Add the following Environment Variable in Vercel:
+    - `NEXT_PUBLIC_API_URL`: `https://your-render-app-url.onrender.com`
+  
+  ### 3. Update GitHub OAuth App
+  - Go back to your GitHub Developer Settings.
+  - Update the **Homepage URL** to your Vercel app URL (e.g., `https://your-vercel-app.vercel.app`).
+  - Update the **Authorization callback URL** to your Render backend URL (e.g., `https://your-render-app-url.onrender.com/auth/github/callback`).

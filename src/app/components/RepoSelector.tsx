@@ -5,6 +5,7 @@ import { Button } from "./ui/button";
 import { useGitHubStore } from "../../store/githubStore";
 import { toast } from "sonner";
 import { CreateRepoDialog } from "./CreateRepoDialog";
+import { API_URL } from "../utils/api";
 
 export function RepoSelector({ onRepoSelect }: { onRepoSelect: (repo: any) => void }) {
   const { isConnected, sessionId } = useGitHubStore();
@@ -22,7 +23,7 @@ export function RepoSelector({ onRepoSelect }: { onRepoSelect: (repo: any) => vo
   const fetchRepos = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch("http://localhost:3001/github/repos", {
+      const res = await fetch(`${API_URL}/github/repos`, {
         headers: { "x-session-id": sessionId || "" }
       });
       const data = await res.json();

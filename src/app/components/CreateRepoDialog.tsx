@@ -8,6 +8,7 @@ import { Switch } from "./ui/switch";
 import { useGitHubStore } from "../../store/githubStore";
 import { toast } from "sonner";
 import { Loader2, Plus } from "lucide-react";
+import { API_URL } from "../utils/api";
 
 interface CreateRepoDialogProps {
   isOpen: boolean;
@@ -30,7 +31,7 @@ export function CreateRepoDialog({ isOpen, onClose, onCreated }: CreateRepoDialo
 
     let successData = null;
     try {
-      const res = await fetch("http://localhost:3001/github/create-repo", {
+      const res = await fetch(`${API_URL}/github/create-repo`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -5,6 +5,7 @@ import { useGitHubStore } from "../../store/githubStore";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "./ui/dialog";
 import { Input } from "./ui/input";
+import { API_URL } from "../utils/api";
 
 interface GitHubPushButtonProps {
   currentFile: string;
@@ -48,7 +49,7 @@ export function GitHubPushButton({ currentFile, code, onCodeSaved }: GitHubPushB
         payload.sha = trackedFile.sha;
       }
       
-      const res = await fetch("http://localhost:3001/github/push", {
+      const res = await fetch(`${API_URL}/github/push`, {
         method: "PUT",
         headers: { 
           "Content-Type": "application/json",

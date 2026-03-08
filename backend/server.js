@@ -14,8 +14,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const COMPILER_PATH = path.join(__dirname, 'compiler.exe');
-const VM_PATH = path.join(__dirname, 'vm.exe');
+const isWin = process.platform === 'win32';
+const COMPILER_PATH = path.join(__dirname, isWin ? 'compiler.exe' : 'compiler');
+const VM_PATH = path.join(__dirname, isWin ? 'vm.exe' : 'vm');
 const TEMP_C = path.join(__dirname, 'temp.c');
 const TEMP_ASM = path.join(__dirname, 'temp.asm');
 

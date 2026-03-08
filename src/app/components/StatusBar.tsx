@@ -3,6 +3,7 @@ import { Github, LogOut, Code, Info } from "lucide-react";
 import { Button } from "./ui/button";
 import { useGitHubStore } from "../../store/githubStore";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
+import { API_URL } from "../utils/api";
 
 interface StatusBarProps {
   currentFile: string;
@@ -24,7 +25,7 @@ export function StatusBar({
   const { isConnected, username, clearSession } = useGitHubStore();
 
   const handleLogin = () => {
-    window.location.href = "http://localhost:3001/auth/github";
+    window.location.href = `${API_URL}/auth/github`;
   };
 
   return (

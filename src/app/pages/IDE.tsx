@@ -43,6 +43,7 @@ import { FileItem } from "../types/ide";
 import { useGitHubStore } from "../../store/githubStore";
 import { FileImportDialog } from "../components/FileImportDialog";
 import { formatCCode } from "../utils/c-formatter";
+import { API_URL } from "../utils/api";
 
 export type { FileItem };
 
@@ -428,7 +429,7 @@ export function IDE() {
     setIsDebugMode(false);
 
     try {
-      const res = await fetch("http://localhost:3001/compile", {
+      const res = await fetch(`${API_URL}/compile`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code })
@@ -473,7 +474,7 @@ export function IDE() {
     setIsDebugMode(false);
 
     try {
-      const res = await fetch("http://localhost:3001/run", { method: "POST" });
+      const res = await fetch(`${API_URL}/run`, { method: "POST" });
       const data = await res.json();
 
       if (data.success) {
@@ -498,7 +499,7 @@ export function IDE() {
 
     setOutput("Starting debugger...\n");
     try {
-      const res = await fetch("http://localhost:3001/debug", { method: "POST" });
+      const res = await fetch(`${API_URL}/debug`, { method: "POST" });
       const data = await res.json();
 
       if (data.success && data.trace) {
