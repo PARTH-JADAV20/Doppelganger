@@ -1,13 +1,14 @@
 import { Github, LogOut } from "lucide-react";
 import { Button } from "./ui/button";
 import { useGitHubStore } from "../../store/githubStore";
+import { API_URL } from "../utils/api";
 
 export function GitHubLoginButton() {
   const { isConnected, username, clearSession } = useGitHubStore();
 
   const handleLogin = () => {
     // Redirects to backend which redirects to GitHub OAuth
-    window.location.href = "http://localhost:3001/auth/github";
+    window.location.href = `${API_URL}/auth/github`;
   };
 
   if (isConnected) {

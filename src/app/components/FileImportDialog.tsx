@@ -5,6 +5,7 @@ import { Checkbox } from "./ui/checkbox";
 import { useGitHubStore } from "../../store/githubStore";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { API_URL } from "../utils/api";
 
 interface FileImportDialogProps {
   repo: any;
@@ -35,7 +36,7 @@ export function FileImportDialog({ repo, isOpen, onClose, onImport }: FileImport
     setIsLoading(true);
     setErrorMsg("");
     try {
-      const res = await fetch(`http://localhost:3001/github/repo-files?owner=${repo.owner.login}&repo=${repo.name}&branch=${repo.default_branch}`, {
+      const res = await fetch(`${API_URL}/github/repo-files?owner=${repo.owner.login}&repo=${repo.name}&branch=${repo.default_branch}`, {
         headers: { "x-session-id": sessionId || "" }
       });
       const data = await res.json();
@@ -83,7 +84,7 @@ export function FileImportDialog({ repo, isOpen, onClose, onImport }: FileImport
       
       // Fetch contents one by one
       for (const path of selectedPaths) {
-        const res = await fetch(`http://localhost:3001/github/file-content?owner=${repo.owner.login}&repo=${repo.name}&path=${encodeURIComponent(path)}`, {
+        const res = await fetch(`${API_URL}/github/file-content?owner=${repo.owner.login}&repo=${repo.name}&path=${encodeURIComponent(path)}`, {
           headers: { "x-session-id": sessionId || "" }
         });
         const data = await res.json();
