@@ -1,4 +1,4 @@
-import { Code2, Play, Moon, Sun, Bug, PanelLeft } from "lucide-react";
+import { Code2, Play, Moon, Sun, Bug, PanelLeft, AlignLeft } from "lucide-react";
 import { Button } from "./ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 import { useTheme } from "next-themes";
@@ -12,6 +12,7 @@ interface NavbarProps {
   onCompile: () => void;
   onRun: () => void;
   onDebug?: () => void;
+  onFormat?: () => void;
   onRepoSelect?: (repo: any) => void;
   onPushGithub?: () => void;
   isCompiling: boolean;
@@ -20,15 +21,16 @@ interface NavbarProps {
   onToggleSidebar: () => void;
 }
 
-export function Navbar({ 
-  currentFile, 
+export function Navbar({
+  currentFile,
   currentCode,
-  onCompile, 
-  onRun, 
-  onDebug, 
+  onCompile,
+  onRun,
+  onDebug,
+  onFormat,
   onRepoSelect,
   onPushGithub,
-  isCompiling, 
+  isCompiling,
   hasUnsavedChanges,
   isSidebarVisible,
   onToggleSidebar
@@ -90,9 +92,9 @@ export function Navbar({
 
         {/* Right: Actions */}
         <div className="flex items-center gap-1.5">
-          
+
           {onPushGithub && (
-            <GitHubPushButton 
+            <GitHubPushButton
               currentFile={currentFile}
               code={currentCode}
               onCodeSaved={onPushGithub}
@@ -126,6 +128,25 @@ export function Navbar({
               </TooltipTrigger>
               <TooltipContent className="text-[10px]">
                 Compile (Ctrl+Enter)
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  onClick={onFormat}
+                  variant="outline"
+                  size="sm"
+                  className="border-white/10 hover:bg-white/5 rounded-lg h-8 px-3 text-[11px] font-medium"
+                >
+                  <AlignLeft className="w-3.5 h-3.5 mr-1.5" />
+                  Format
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent className="text-[10px]">
+                Format Code (Shift+Alt+F)
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>

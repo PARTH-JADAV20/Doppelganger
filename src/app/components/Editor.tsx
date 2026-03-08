@@ -3,6 +3,7 @@ import { useTheme } from "next-themes";
 import { motion } from "motion/react";
 import { Loader2 } from "lucide-react";
 import { useEffect, useRef } from "react";
+import { checkCSyntax } from "../utils/c-syntax-checker";
 
 interface EditorProps {
   code: string;
@@ -21,7 +22,7 @@ export function Editor({ code, filePath, onChange, onCursorChange, onMount }: Ed
   const handleEditorDidMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;
     monacoRef.current = monaco;
-    
+
     // Set up cursor position tracking
     editor.onDidChangeCursorPosition((e) => {
       onCursorChange(e.position.lineNumber, e.position.column);
@@ -38,15 +39,15 @@ export function Editor({ code, filePath, onChange, onCursorChange, onMount }: Ed
 
     const editor = editorRef.current;
     const monaco = monacoRef.current;
-    
+
     // Get or create model for this file
     let model = modelRef.current[filePath];
-    
+
     if (!model) {
       // Create new model for this file
       model = monaco.editor.createModel(code, "c", monaco.Uri.file(filePath));
       modelRef.current[filePath] = model;
-      
+
       // Listen to model changes
       model.onDidChangeContent(() => {
         onChange(model.getValue());
@@ -58,15 +59,39 @@ export function Editor({ code, filePath, onChange, onCursorChange, onMount }: Ed
         model.setValue(code);
       }
     }
-    
+
     // Switch to this file's model
     editor.setModel(model);
   }, [filePath]);
 
-  // Update model when code changes externally (but not from the editor itself)
+  // Real-time syntax checking with debouncing
+  useEffect(() => {
+    if (!editorRef.current || !monacoRef.current) return;
+
+    const monaco = monacoRef.current;
+    const model = modelRef.current[filePath];
+    if (!model) return;
+
+    const timer = setTimeout(() => {
+      const errors = checkCSyntax(code);
+      const markers = errors.map(err => ({
+        startLineNumber: err.line,
+        startColumn: err.column - 1,
+        endLineNumber: err.line,
+        endColumn: err.column,
+        message: err.message,
+        severity: err.severity === 'Error' ? monaco.MarkerSeverity.Error : monaco.MarkerSeverity.Warning
+      }));
+
+      monaco.editor.setModelMarkers(model, "c-linter", markers);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [code, filePath]);
+
   useEffect(() => {
     if (!editorRef.current) return;
-    
+
     const model = modelRef.current[filePath];
     if (model) {
       const currentValue = model.getValue();
