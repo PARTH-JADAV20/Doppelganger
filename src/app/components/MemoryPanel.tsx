@@ -141,17 +141,43 @@ export const MemoryPanel = ({
   // For now, let's use a simplified stack frame list
   const stackFrames = current?.func ? [current.func] : [];
 
+  // STEP 2: Execution Stats - Calculate all stats dynamically from trace data
+  const calculateRegistersUsed = () => {
+    if (!current) return 0;
+    let count = 0;
+    // Count non-zero registers (R0-R3)
+    if (typeof current.r0 === 'number' && current.r0 !== 0) count++;
+    if (typeof current.r1 === 'number' && current.r1 !== 0) count++;
+    if (typeof current.r2 === 'number' && current.r2 !== 0) count++;
+    if (typeof current.r3 === 'number' && current.r3 !== 0) count++;
+    // BP and SP are always considered used (they always have values)
+    return count + 2;
+  };
+
+  const calculateStackDepth = () => {
+    if (!current || typeof current.sp_max !== 'number' || typeof current.sp !== 'number') return 0;
+    // Stack depth is the number of stack slots used (sp_max - sp)
+    // Each slot is typically 4 bytes, so divide by 4 to get depth in elements
+    const usedSlots = current.sp_max - current.sp;
+    return Math.max(0, Math.floor(usedSlots / 4));
+  };
+
+  const calculateStackUsage = () => {
+    if (!current || typeof current.sp_max !== 'number' || typeof current.sp !== 'number') return 0;
+    if (current.sp_max === 0) return 0;
+    const usedBytes = current.sp_max - current.sp;
+    const percentage = Math.round((usedBytes / current.sp_max) * 100);
+    return Math.min(100, Math.max(0, percentage)); // Clamp between 0-100
+  };
+
   const stats = current ? {
-    registersUsed: ((current.r0 !== 0 && current.r0 !== undefined) ? 1 : 0) + 
-                   ((current.r1 !== 0 && current.r1 !== undefined) ? 1 : 0) + 
-                   ((current.r2 !== 0 && current.r2 !== undefined) ? 1 : 0) + 
-                   ((current.r3 !== 0 && current.r3 !== undefined) ? 1 : 0) + 2, // BP and SP always used
-    totalRegisters: 6,
-    instructionCount: trace.length,
-    stackDepth: current.sp_max && current.sp ? Math.max(0, Math.floor((current.sp_max - current.sp) / 4)) : 0,
-    cycles: typeof current.tick === 'number' ? current.tick : 0,
-    heapUsage: 0,
-    stackUsage: current.sp_max && current.sp ? Math.round(((current.sp_max - current.sp) / current.sp_max) * 100) : 0
+    registersUsed: calculateRegistersUsed(),
+    totalRegisters: 6, // Fixed: R0, R1, R2, R3, BP, SP
+    instructionCount: step + 1, // Number of instructions executed so far (0-indexed step + 1)
+    stackDepth: calculateStackDepth(),
+    cycles: typeof current.tick === 'number' ? current.tick : step, // Use tick if available, otherwise use step as cycle count
+    heapUsage: 0, // Heap not tracked in current VM implementation
+    stackUsage: calculateStackUsage()
   } : {
     registersUsed: 0,
     totalRegisters: 6,
