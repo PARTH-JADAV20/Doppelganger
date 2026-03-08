@@ -42,6 +42,7 @@ import { toast } from "sonner";
 import { FileItem } from "../types/ide";
 import { useGitHubStore } from "../../store/githubStore";
 import { FileImportDialog } from "../components/FileImportDialog";
+import { formatCCode } from "../utils/c-formatter";
 
 export type { FileItem };
 
@@ -233,7 +234,7 @@ export function IDE() {
 
     return merged;
   });
-  
+
   const { setSession, trackFile, markFileModified, trackedFiles } = useGitHubStore();
 
   const [fileTree, setFileTree] = useState<FileItem[]>(() => buildFileTree(files));
@@ -313,7 +314,7 @@ export function IDE() {
     const updatedFiles = { ...files, [filePath]: code };
     setFiles(updatedFiles);
     setHasUnsavedChanges(false);
-    
+
     // Check github tracking
     const tracked = trackedFiles[filePath];
     if (tracked && tracked.originalContent !== code) {
@@ -408,6 +409,15 @@ export function IDE() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     toast.success(`Downloaded ${filePath}`);
+  };
+
+  const handleFormat = () => {
+    if (!code) return;
+    const formatted = formatCCode(code);
+    if (formatted !== code) {
+      setCode(formatted);
+      toast.success("Code formatted");
+    }
   };
 
   const handleCompile = async () => {
@@ -584,6 +594,11 @@ export function IDE() {
         e.preventDefault();
         setIsSidebarVisible((prev) => !prev);
       }
+      // Shift+Alt+F to format
+      if (e.shiftKey && e.altKey && e.key === "F") {
+        e.preventDefault();
+        handleFormat();
+      }
     };
 
     window.addEventListener("keydown", handleKeyDown);
@@ -601,6 +616,7 @@ export function IDE() {
         onCompile={handleCompile}
         onRun={handleRun}
         onDebug={handleDebug}
+        onFormat={handleFormat}
         onRepoSelect={(repo) => {
           if (!repo || !repo.owner) {
             toast.error("Invalid repository data");
