@@ -458,18 +458,29 @@ export function IDE() {
       const data = await res.json();
 
       if (data.success && data.trace) {
-        setDebugTrace(data.trace);
-        setDebugStep(0);
-        setIsDebugMode(true);
-        setActiveTab("memory");
-        updateStatsFromTrace(data.trace[0]);
+        if (Array.isArray(data.trace) && data.trace.length > 0) {
+          setDebugTrace(data.trace);
+          setDebugStep(0);
+          setIsDebugMode(true);
+          setActiveTab("memory");
+          updateStatsFromTrace(data.trace[0]);
+          setOutput(`Debugger started successfully!\nLoaded ${data.trace.length} trace steps.\n`);
+        } else {
+          setOutput(`Debugger Error:\n\nTrace is empty or invalid. Received ${data.trace ? 'empty array' : 'no trace data'}.`);
+          setActiveTab("output");
+        }
       } else {
-        setOutput(`Debugger Error:\n\n${data.error || "Failed to load trace"}`);
+        const errorMsg = data.error || "Failed to load trace";
+        const details = data.details ? `\n\nDetails: ${data.details}` : "";
+        setOutput(`Debugger Error:\n\n${errorMsg}${details}`);
         setActiveTab("output");
+        console.error("Debug error:", data);
       }
-    } catch (err) {
-      setOutput(`Failed to start debugger sequence.`);
+    } catch (err: any) {
+      const errorMsg = err.message || "Unknown error";
+      setOutput(`Failed to start debugger sequence.\n\nError: ${errorMsg}\n\nMake sure:\n1. Backend server is running on port 3001\n2. Code compiled successfully\n3. VM executable exists and is working`);
       setActiveTab("output");
+      console.error("Debug fetch error:", err);
     }
   };
 
