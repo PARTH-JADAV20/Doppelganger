@@ -68,32 +68,91 @@ export const InstructionTimeline = ({
 };
 
 // --- Memory Layout Visualization ---
-export const MemoryLayout = ({ stackDepth, totalSize }: { stackDepth: number, totalSize: number }) => {
-  const stackHeight = (stackDepth / totalSize) * 100;
+// STEP 4: Memory Map - Display dynamic memory layout from trace data
+export const MemoryLayout = ({ 
+  stackDepth, 
+  totalSize, 
+  sp, 
+  bp, 
+  spMax 
+}: { 
+  stackDepth: number, 
+  totalSize: number,
+  sp?: number,
+  bp?: number,
+  spMax?: number
+}) => {
+  // Calculate stack usage percentage
+  const stackHeight = totalSize > 0 ? Math.max(0, Math.min(100, (stackDepth / totalSize) * 100)) : 0;
+  
+  // Calculate positions for SP and BP markers (if provided)
+  // Stack grows downward, so SP at bottom means more stack used
+  const spPosition = sp !== undefined && spMax !== undefined && spMax > 0 
+    ? ((spMax - sp) / spMax) * 100 
+    : stackHeight;
+  const bpPosition = bp !== undefined && spMax !== undefined && spMax > 0
+    ? ((spMax - bp) / spMax) * 100
+    : stackHeight;
 
   return (
     <div className="bg-white/50 dark:bg-white/5 backdrop-blur-xl border border-black/10 dark:border-white/20 rounded-2xl p-4 shadow-xl">
-      <div className="flex items-center gap-2 mb-4 text-orange-600 dark:text-orange-500">
-        <Layers size={18} />
-        <h3 className="font-bold uppercase tracking-wider text-sm">Memory Map</h3>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2 text-orange-600 dark:text-orange-500">
+          <Layers size={18} />
+          <h3 className="font-bold uppercase tracking-wider text-sm">Memory Map</h3>
+        </div>
+        {spMax !== undefined && sp !== undefined && (
+          <div className="text-xs text-gray-600 dark:text-gray-400 font-mono">
+            {stackDepth} / {spMax} bytes
+          </div>
+        )}
       </div>
       <div className="h-[150px] w-full bg-gray-100 dark:bg-black/30 rounded-xl relative overflow-hidden border border-gray-200 dark:border-white/10">
-        {/* Stack Segment */}
+        {/* Stack Segment - Shows used stack memory */}
         <motion.div
           initial={{ height: 0 }}
-          animate={{ height: `${Math.max(25, stackHeight)}%` }}
-          style={{ minHeight: '32px' }}
+          animate={{ height: `${Math.max(2, stackHeight)}%` }}
+          transition={{ duration: 0.3, ease: "easeOut" }}
+          style={{ minHeight: stackHeight > 0 ? '24px' : '0px' }}
           className="absolute top-0 w-full bg-gradient-to-b from-purple-500/70 to-pink-500/50 border-b border-purple-500/60 flex flex-col items-center justify-center"
         >
-          <span className="text-[10px] font-black text-white uppercase tracking-widest leading-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">Stack</span>
+          {stackHeight > 5 && (
+            <span className="text-[10px] font-black text-white uppercase tracking-widest leading-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">
+              Stack ({Math.round(stackHeight)}%)
+            </span>
+          )}
         </motion.div>
+
+        {/* BP Marker - Shows Base Pointer position */}
+        {bp !== undefined && spMax !== undefined && bp < spMax && bpPosition > 0 && bpPosition < 100 && (
+          <div
+            className="absolute left-0 right-0 border-t-2 border-blue-400 dark:border-blue-500 z-10"
+            style={{ top: `${bpPosition}%` }}
+          >
+            <div className="absolute left-2 top-[-8px] text-[9px] font-bold text-blue-600 dark:text-blue-400 bg-white/80 dark:bg-black/80 px-1 rounded">
+              BP
+            </div>
+          </div>
+        )}
+
+        {/* SP Marker - Shows Stack Pointer position */}
+        {sp !== undefined && spMax !== undefined && sp < spMax && spPosition > 0 && spPosition < 100 && (
+          <div
+            className="absolute left-0 right-0 border-t-2 border-green-400 dark:border-green-500 z-10 border-dashed"
+            style={{ top: `${spPosition}%` }}
+          >
+            <div className="absolute right-2 top-[-8px] text-[9px] font-bold text-green-600 dark:text-green-400 bg-white/80 dark:bg-black/80 px-1 rounded">
+              SP
+            </div>
+          </div>
+        )}
 
         {/* Free space */}
         <div className="absolute inset-x-0 bottom-0 h-full flex flex-col justify-end pointer-events-none">
           <div className="p-4 flex flex-col items-center opacity-40 dark:opacity-30">
             <Database size={24} className="text-gray-500 dark:text-gray-400 mb-2" />
             <span className="text-[10px] text-gray-600 dark:text-gray-400 font-bold uppercase tracking-widest">
-              Available
+              Available ({Math.round(100 - stackHeight)}%)
             </span>
           </div>
         </div>
@@ -260,7 +319,14 @@ export const MemoryPanel = ({
       {/* Column 2: Stats & Timeline */}
       <div className="space-y-4 flex flex-col min-h-[500px] min-w-0 overflow-hidden">
         <ExecutionStats stats={stats} />
-        <MemoryLayout stackDepth={current?.sp_max && current?.sp ? current.sp_max - current.sp : 0} totalSize={current?.sp_max || 1024} />
+        {/* STEP 4: Memory Map - Pass dynamic memory data */}
+        <MemoryLayout 
+          stackDepth={current?.sp_max && current?.sp ? current.sp_max - current.sp : 0} 
+          totalSize={current?.sp_max || 1024}
+          sp={typeof current?.sp === 'number' ? current.sp : undefined}
+          bp={typeof current?.bp === 'number' ? current.bp : undefined}
+          spMax={typeof current?.sp_max === 'number' ? current.sp_max : undefined}
+        />
         <div className="flex-1 min-h-[300px]">
           <InstructionTimeline
             instructions={allInstructions.length > 0 ? allInstructions : ['No instructions']}
