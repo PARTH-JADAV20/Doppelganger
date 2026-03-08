@@ -23,6 +23,8 @@ interface OutputPanelProps {
   debugStep?: number;
   debugTrace?: any[];
   onDebugNext?: () => void;
+  onDebugPrev?: () => void;
+  onDebugJump?: (stepIndex: number) => void;
 }
 
 export function OutputPanel({
@@ -34,7 +36,9 @@ export function OutputPanel({
   isDebugMode,
   debugStep = 0,
   debugTrace = [],
-  onDebugNext
+  onDebugNext,
+  onDebugPrev,
+  onDebugJump
 }: OutputPanelProps) {
   return (
     <motion.div
@@ -93,12 +97,14 @@ export function OutputPanel({
           />
         </TabsContent>
 
-        <TabsContent value="memory" className="flex-1 min-h-0 bg-[#0f0f1a]/50 overflow-y-auto hide-scrollbar">
+        <TabsContent value="memory" className="flex-1 min-h-0 bg-transparent dark:bg-[#0f0f1a]/50 overflow-y-auto hide-scrollbar">
           <div className="p-2">
             <MemoryPanel
               trace={debugTrace || []}
               step={debugStep}
               onNext={onDebugNext}
+              onPrev={onDebugPrev}
+              onJump={onDebugJump}
             />
           </div>
         </TabsContent>

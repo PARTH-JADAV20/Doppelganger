@@ -50,16 +50,19 @@ int main() {
     printf("Hello, World!\\n");
     return 0;
 }`,
-  "examples/fibonacci.c": `int fibonacci(int n) {
-    if (n <= 1) return n;
+  "examples/fibonacci.c": `#include <stdio.h>
+
+int fibonacci(int n) {
+    if (n <= 1) {
+        return n;
+    }
     return fibonacci(n - 1) + fibonacci(n - 2);
 }
 
 int main() {
-    int n = 10;
-    printf("Fibonacci recursion demo\\n");
-    printf("Calculating fib(10)...\\n");
-    printf("Result: %d\\n", fibonacci(n));
+    int n = 5;
+    int result = fibonacci(n);
+    printf("Fibonacci of %d is %d\\n", n, result);
     return 0;
 }`,
   "examples/arithmetic.c": `int main() {
@@ -218,12 +221,12 @@ export function IDE() {
     // Merge logic: ensure new default examples are added to existing ones
     const savedFiles = JSON.parse(saved);
     const merged = { ...defaultFiles, ...savedFiles };
-    
+
     // Cleanup: remove the old redundant recursive example name if it exists
     if (merged["examples/fibonacci_recursive.c"]) {
       delete merged["examples/fibonacci_recursive.c"];
     }
-    
+
     return merged;
   });
   const [fileTree, setFileTree] = useState<FileItem[]>(() => buildFileTree(files));
@@ -455,18 +458,29 @@ export function IDE() {
       const data = await res.json();
 
       if (data.success && data.trace) {
-        setDebugTrace(data.trace);
-        setDebugStep(0);
-        setIsDebugMode(true);
-        setActiveTab("memory");
-        updateStatsFromTrace(data.trace[0]);
+        if (Array.isArray(data.trace) && data.trace.length > 0) {
+          setDebugTrace(data.trace);
+          setDebugStep(0);
+          setIsDebugMode(true);
+          setActiveTab("memory");
+          updateStatsFromTrace(data.trace[0]);
+          setOutput(`Debugger started successfully!\nLoaded ${data.trace.length} trace steps.\n`);
+        } else {
+          setOutput(`Debugger Error:\n\nTrace is empty or invalid. Received ${data.trace ? 'empty array' : 'no trace data'}.`);
+          setActiveTab("output");
+        }
       } else {
-        setOutput(`Debugger Error:\n\n${data.error || "Failed to load trace"}`);
+        const errorMsg = data.error || "Failed to load trace";
+        const details = data.details ? `\n\nDetails: ${data.details}` : "";
+        setOutput(`Debugger Error:\n\n${errorMsg}${details}`);
         setActiveTab("output");
+        console.error("Debug error:", data);
       }
-    } catch (err) {
-      setOutput(`Failed to start debugger sequence.`);
+    } catch (err: any) {
+      const errorMsg = err.message || "Unknown error";
+      setOutput(`Failed to start debugger sequence.\n\nError: ${errorMsg}\n\nMake sure:\n1. Backend server is running on port 3001\n2. Code compiled successfully\n3. VM executable exists and is working`);
       setActiveTab("output");
+      console.error("Debug fetch error:", err);
     }
   };
 
@@ -490,6 +504,28 @@ export function IDE() {
       const next = debugStep + 1;
       setDebugStep(next);
       updateStatsFromTrace(debugTrace[next]);
+      console.log(`Debug step: ${next + 1}/${debugTrace.length}`); // Debug log
+    } else {
+      console.log("Reached end of trace"); // Debug log
+    }
+  };
+
+  const handleDebugPrev = () => {
+    if (debugStep > 0) {
+      const prev = debugStep - 1;
+      setDebugStep(prev);
+      updateStatsFromTrace(debugTrace[prev]);
+      console.log(`Debug step: ${prev + 1}/${debugTrace.length}`);
+    } else {
+      console.log("Reached beginning of trace");
+    }
+  };
+
+  const handleDebugJump = (stepIndex: number) => {
+    if (stepIndex >= 0 && stepIndex < debugTrace.length) {
+      setDebugStep(stepIndex);
+      updateStatsFromTrace(debugTrace[stepIndex]);
+      console.log(`Debug jumped to step: ${stepIndex + 1}/${debugTrace.length}`);
     }
   };
 
@@ -579,6 +615,8 @@ export function IDE() {
                     debugStep={debugStep}
                     debugTrace={debugTrace}
                     onDebugNext={handleDebugNext}
+                    onDebugPrev={handleDebugPrev}
+                    onDebugJump={handleDebugJump}
                   />
                 </div>
               </Panel>
