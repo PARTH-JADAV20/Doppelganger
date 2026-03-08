@@ -5,7 +5,7 @@ import { useGitHubStore } from "../../store/githubStore";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "./ui/dialog";
 import { Input } from "./ui/input";
-import { API_URL } from "../utils/api";
+import { githubFetch } from "../utils/api";
 
 interface GitHubPushButtonProps {
   currentFile: string;
@@ -49,11 +49,10 @@ export function GitHubPushButton({ currentFile, code, onCodeSaved }: GitHubPushB
         payload.sha = trackedFile.sha;
       }
       
-      const res = await fetch(`${API_URL}/github/push`, {
+      const res = await githubFetch('/github/push', sessionId, {
         method: "PUT",
         headers: { 
           "Content-Type": "application/json",
-          "x-session-id": sessionId || ""
         },
         body: JSON.stringify(payload)
       });
@@ -73,7 +72,7 @@ export function GitHubPushButton({ currentFile, code, onCodeSaved }: GitHubPushB
         toast.error(data.error || "Failed to push to GitHub. Does the file already exist?");
       }
     } catch (error) {
-      toast.error("Network error attempting to push to GitHub.");
+      // Error already handled by githubFetch
     } finally {
       setIsPushing(false);
     }

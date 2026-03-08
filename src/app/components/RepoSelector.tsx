@@ -5,7 +5,7 @@ import { Button } from "./ui/button";
 import { useGitHubStore } from "../../store/githubStore";
 import { toast } from "sonner";
 import { CreateRepoDialog } from "./CreateRepoDialog";
-import { API_URL } from "../utils/api";
+import { githubFetch } from "../utils/api";
 
 export function RepoSelector({ onRepoSelect }: { onRepoSelect: (repo: any) => void }) {
   const { isConnected, sessionId } = useGitHubStore();
@@ -23,9 +23,7 @@ export function RepoSelector({ onRepoSelect }: { onRepoSelect: (repo: any) => vo
   const fetchRepos = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch(`${API_URL}/github/repos`, {
-        headers: { "x-session-id": sessionId || "" }
-      });
+      const res = await githubFetch('/github/repos', sessionId);
       const data = await res.json();
       if (data.success) {
         setRepos(data.repos);
@@ -33,7 +31,7 @@ export function RepoSelector({ onRepoSelect }: { onRepoSelect: (repo: any) => vo
         toast.error(data.error || "Failed to fetch repositories.");
       }
     } catch (error) {
-      toast.error("Network error fetching repositories.");
+      // Error already handled by githubFetch
     } finally {
       setIsLoading(false);
     }

@@ -379,6 +379,15 @@ const requireGithubSession = (req, res, next) => {
     next();
 };
 
+// Session validation endpoint
+app.get('/auth/validate', (req, res) => {
+    const sessionId = req.headers['x-session-id'];
+    if (!sessionId || !sessions.has(sessionId)) {
+        return res.status(401).json({ valid: false, error: "Session expired or invalid" });
+    }
+    res.json({ valid: true });
+});
+
 // 3. Get User Repositories
 app.get('/github/repos', requireGithubSession, async (req, res) => {
     try {
