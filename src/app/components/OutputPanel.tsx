@@ -24,6 +24,7 @@ interface OutputPanelProps {
   debugTrace?: any[];
   onDebugNext?: () => void;
   onDebugPrev?: () => void;
+  onDebugJump?: (stepIndex: number) => void;
 }
 
 export function OutputPanel({
@@ -36,7 +37,8 @@ export function OutputPanel({
   debugStep = 0,
   debugTrace = [],
   onDebugNext,
-  onDebugPrev
+  onDebugPrev,
+  onDebugJump
 }: OutputPanelProps) {
   return (
     <motion.div
@@ -102,6 +104,7 @@ export function OutputPanel({
               step={debugStep}
               onNext={onDebugNext}
               onPrev={onDebugPrev}
+              onJump={onDebugJump}
             />
           </div>
         </TabsContent>

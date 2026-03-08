@@ -221,12 +221,12 @@ export function IDE() {
     // Merge logic: ensure new default examples are added to existing ones
     const savedFiles = JSON.parse(saved);
     const merged = { ...defaultFiles, ...savedFiles };
-    
+
     // Cleanup: remove the old redundant recursive example name if it exists
     if (merged["examples/fibonacci_recursive.c"]) {
       delete merged["examples/fibonacci_recursive.c"];
     }
-    
+
     return merged;
   });
   const [fileTree, setFileTree] = useState<FileItem[]>(() => buildFileTree(files));
@@ -510,7 +510,7 @@ export function IDE() {
     }
   };
 
-    const handleDebugPrev = () => {
+  const handleDebugPrev = () => {
     if (debugStep > 0) {
       const prev = debugStep - 1;
       setDebugStep(prev);
@@ -518,6 +518,14 @@ export function IDE() {
       console.log(`Debug step: ${prev + 1}/${debugTrace.length}`);
     } else {
       console.log("Reached beginning of trace");
+    }
+  };
+
+  const handleDebugJump = (stepIndex: number) => {
+    if (stepIndex >= 0 && stepIndex < debugTrace.length) {
+      setDebugStep(stepIndex);
+      updateStatsFromTrace(debugTrace[stepIndex]);
+      console.log(`Debug jumped to step: ${stepIndex + 1}/${debugTrace.length}`);
     }
   };
 
@@ -629,6 +637,7 @@ export function IDE() {
                     debugTrace={debugTrace}
                     onDebugNext={handleDebugNext}
                     onDebugPrev={handleDebugPrev}
+                    onDebugJump={handleDebugJump}
                   />
                 </div>
               </Panel>

@@ -10,12 +10,14 @@ export const InstructionTimeline = ({
   currentIdx,
   onStep,
   onPrevStep,
+  onJump,
   trace
 }: {
   instructions: string[],
   currentIdx: number,
   onStep?: () => void,
   onPrevStep?: () => void,
+  onJump?: (stepIndex: number) => void,
   trace?: any[]
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -103,9 +105,10 @@ export const InstructionTimeline = ({
             return (
               <motion.div
                 key={`${inst}-${i}-${info?.pc || i}`}
-                className={`flex items-start gap-2 p-2 rounded-lg border font-mono text-xs transition-all ${isActive
+                onClick={() => onJump && onJump(i)}
+                className={`flex items-start gap-2 p-2 rounded-lg border font-mono text-xs transition-all cursor-pointer group/item ${isActive
                   ? "bg-green-100 dark:bg-green-500/20 border-green-300 dark:border-green-500/50 text-green-800 dark:text-green-300 shadow-[0_0_15px_rgba(34,197,94,0.1)]"
-                  : "border-transparent text-gray-600 dark:text-gray-400 opacity-60 hover:opacity-100"
+                  : "border-transparent text-gray-600 dark:text-gray-400 opacity-60 hover:opacity-100 hover:bg-white/10"
                   }`}
               >
                 <span className="w-8 text-right text-[10px] opacity-60 shrink-0 pt-0.5">
@@ -113,7 +116,7 @@ export const InstructionTimeline = ({
                 </span>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold">{inst}</span>
+                    <span className="font-semibold group-hover/item:text-green-500 transition-colors">{inst}</span>
                     {isActive && <ArrowRight size={12} className="animate-pulse shrink-0" />}
                   </div>
                   {info && (
@@ -266,12 +269,14 @@ export const MemoryPanel = ({
   trace,
   step,
   onNext,
-  onPrev
+  onPrev,
+  onJump
 }: {
   trace: any[],
   step: number,
   onNext?: () => void,
-  onPrev?: () => void
+  onPrev?: () => void,
+  onJump?: (stepIndex: number) => void
 }) => {
   // Get current step data from trace, or use empty state if no trace
   const current = trace && trace.length > 0 && step >= 0 && step < trace.length
@@ -445,6 +450,7 @@ export const MemoryPanel = ({
             currentIdx={step >= 0 && step < allInstructions.length ? step : 0}
             onStep={onNext}
             onPrevStep={onPrev}
+            onJump={onJump}
             trace={trace}
           />
         </div>
