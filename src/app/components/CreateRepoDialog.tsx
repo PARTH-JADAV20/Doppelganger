@@ -8,7 +8,7 @@ import { Switch } from "./ui/switch";
 import { useGitHubStore } from "../../store/githubStore";
 import { toast } from "sonner";
 import { Loader2, Plus } from "lucide-react";
-import { API_URL } from "../utils/api";
+import { githubFetch } from "../utils/api";
 
 interface CreateRepoDialogProps {
   isOpen: boolean;
@@ -31,11 +31,10 @@ export function CreateRepoDialog({ isOpen, onClose, onCreated }: CreateRepoDialo
 
     let successData = null;
     try {
-      const res = await fetch(`${API_URL}/github/create-repo`, {
+      const res = await githubFetch('/github/create-repo', sessionId, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-session-id": sessionId || ""
         },
         body: JSON.stringify({
           name: name.trim(),
@@ -52,8 +51,7 @@ export function CreateRepoDialog({ isOpen, onClose, onCreated }: CreateRepoDialo
         toast.error(data.error || "Failed to create repository");
       }
     } catch (error: any) {
-      console.error("Create repo fetch error:", error);
-      toast.error("Network error creating repository. Check if server is running.");
+      // Error already handled by githubFetch
     } finally {
       setIsCreating(false);
       isCreatingRef.current = false;
