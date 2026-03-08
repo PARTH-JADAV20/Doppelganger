@@ -24,6 +24,5 @@ dist-ssr
 *.sw?
 
 # Backend
-backend/*.exe
 backend/temp.*
 backend/node_modules
