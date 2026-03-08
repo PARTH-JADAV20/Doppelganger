@@ -137,9 +137,66 @@ export const MemoryPanel = ({
 
   const variables = current?.vars || [];
 
-  // Reconstruct call stack from BP changes or use provided func info
-  // For now, let's use a simplified stack frame list
-  const stackFrames = current?.func ? [current.func] : [];
+  // STEP 3: Stack Frames - Reconstruct call stack dynamically from trace data
+  // The VM uses BP (Base Pointer) to track stack frames
+  // When a function is called, BP is saved and set to current SP (lower value)
+  // When returning, BP is restored (higher value)
+  // So: Lower BP = deeper call, Higher BP = caller
+  const reconstructCallStack = (): string[] => {
+    if (!trace || trace.length === 0 || !current) return [];
+    
+    const callStack: string[] = [];
+    const currentBP = typeof current.bp === 'number' ? current.bp : null;
+    
+    if (currentBP === null) {
+      // Fallback: just use current function if BP is not available
+      return current.func ? [current.func] : [];
+    }
+    
+    // Collect all unique BP values and their corresponding functions
+    // Map BP -> function name
+    const bpToFunc = new Map<number, string>();
+    
+    // Scan through trace to build BP -> function mapping
+    for (let i = 0; i <= step; i++) {
+      const stepData = trace[i];
+      if (!stepData || typeof stepData.bp !== 'number' || !stepData.func) continue;
+      
+      const stepBP = stepData.bp;
+      const stepFunc = stepData.func;
+      
+      // Only update if this BP hasn't been seen or if we have a better function name
+      if (!bpToFunc.has(stepBP) || stepFunc !== 'unknown') {
+        bpToFunc.set(stepBP, stepFunc);
+      }
+    }
+    
+    // Build call stack by finding all BP values >= currentBP (callers)
+    // and sorting them (higher BP = caller, lower BP = callee)
+    const bps = Array.from(bpToFunc.keys())
+      .filter(bp => bp >= currentBP) // Only include current frame and callers
+      .sort((a, b) => b - a); // Sort descending (caller first)
+    
+    // Build the call stack from BP chain
+    for (const bp of bps) {
+      const funcName = bpToFunc.get(bp);
+      if (funcName && funcName !== 'unknown') {
+        // Avoid duplicates
+        if (callStack.length === 0 || callStack[callStack.length - 1] !== funcName) {
+          callStack.push(funcName);
+        }
+      }
+    }
+    
+    // If no call stack found, at least show current function
+    if (callStack.length === 0 && current.func && current.func !== 'unknown') {
+      callStack.push(current.func);
+    }
+    
+    return callStack;
+  };
+  
+  const stackFrames = reconstructCallStack();
 
   // STEP 2: Execution Stats - Calculate all stats dynamically from trace data
   const calculateRegistersUsed = () => {
