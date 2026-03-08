@@ -13,3 +13,37 @@
     display: none; /* Chrome, Safari, and Opera */
   }
 }
+.custom-horizontal-scroll {
+  scrollbar-gutter: stable both-edges;
+}
+
+/* horizontal scrollbar */
+.custom-horizontal-scroll::-webkit-scrollbar {
+  height: 6px;
+}
+
+/* track */
+.custom-horizontal-scroll::-webkit-scrollbar-track {
+  background: rgba(0,0,0,0.05);
+  border-radius: 10px;
+}
+
+/* thumb */
+.custom-horizontal-scroll::-webkit-scrollbar-thumb {
+  background: linear-gradient(90deg,#ec4899,#8b5cf6,#6366f1);
+  border-radius: 10px;
+}
+
+.custom-horizontal-scroll::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(90deg,#f472b6,#a78bfa,#818cf8);
+}
+
+/* hide vertical scrollbar */
+.custom-horizontal-scroll::-webkit-scrollbar:vertical {
+  width: 0px;
+}
+
+.custom-horizontal-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #8b5cf6 transparent;
+}
