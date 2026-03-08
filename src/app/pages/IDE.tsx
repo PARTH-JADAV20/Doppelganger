@@ -37,10 +37,14 @@ import {
   Panel,
   PanelResizeHandle,
 } from "react-resizable-panels";
+import { RepoSelector } from "../components/RepoSelector";
 import { toast } from "sonner";
 import { FileItem } from "../types/ide";
+import { useGitHubStore } from "../../store/githubStore";
+import { FileImportDialog } from "../components/FileImportDialog";
 
 export type { FileItem };
+
 
 // Default starter files
 const defaultFiles: Record<string, string> = {
@@ -229,6 +233,9 @@ export function IDE() {
 
     return merged;
   });
+  
+  const { setSession, trackFile, markFileModified, trackedFiles } = useGitHubStore();
+
   const [fileTree, setFileTree] = useState<FileItem[]>(() => buildFileTree(files));
   const [currentFile, setCurrentFile] = useState("src/main.c");
   const [code, setCode] = useState(files["src/main.c"] || "");
@@ -251,6 +258,20 @@ export function IDE() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const editorRef = useRef<any>(null);
 
+  // Handle GitHub OAuth callback hydration
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionId = urlParams.get('session_id');
+    const username = urlParams.get('username');
+
+    if (sessionId && username) {
+      setSession(sessionId, username);
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+      toast.success(`Successfully connected to GitHub as ${username}`);
+    }
+  }, [setSession]);
+
   // Save files to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem("c-compiler-files", JSON.stringify(files));
@@ -265,13 +286,20 @@ export function IDE() {
       const timer = setTimeout(() => {
         setFiles(prev => ({ ...prev, [currentFile]: code }));
         setHasUnsavedChanges(false);
+        // If file is tracked by GitHub, mark as modified if content differs
+        const tracked = trackedFiles[currentFile];
+        if (tracked && tracked.originalContent !== code) {
+          markFileModified(currentFile, true);
+        } else if (tracked && tracked.originalContent === code) {
+          markFileModified(currentFile, false);
+        }
       }, 1000);
 
       return () => clearTimeout(timer);
     } else {
       setHasUnsavedChanges(false);
     }
-  }, [code, currentFile, files]);
+  }, [code, currentFile, files, trackedFiles, markFileModified]);
 
   const handleFileSelect = (filePath: string) => {
     setCurrentFile(filePath);
@@ -285,6 +313,12 @@ export function IDE() {
     const updatedFiles = { ...files, [filePath]: code };
     setFiles(updatedFiles);
     setHasUnsavedChanges(false);
+    
+    // Check github tracking
+    const tracked = trackedFiles[filePath];
+    if (tracked && tracked.originalContent !== code) {
+      markFileModified(filePath, true);
+    }
   };
 
   const handleCreateFile = (parentPath: string, fileName: string) => {
@@ -556,17 +590,48 @@ export function IDE() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isCompiling, currentFile, code]);
 
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [selectedRepoRef, setSelectedRepoRef] = useState<any>(null);
+
   return (
     <div className="h-screen flex flex-col bg-gradient-to-br from-gray-50 to-gray-100 dark:from-[#0b0b12] dark:via-[#111122] dark:to-[#16162b]">
       <Navbar
         currentFile={currentFile}
+        currentCode={code}
         onCompile={handleCompile}
         onRun={handleRun}
         onDebug={handleDebug}
+        onRepoSelect={(repo) => {
+          if (!repo || !repo.owner) {
+            toast.error("Invalid repository data");
+            return;
+          }
+          useGitHubStore.getState().setSelectedRepo(`${repo.owner.login}/${repo.name}`);
+          setSelectedRepoRef(repo);
+          setImportDialogOpen(true);
+        }}
+        onPushGithub={() => {
+          setHasUnsavedChanges(false);
+        }}
         isCompiling={isCompiling}
         hasUnsavedChanges={hasUnsavedChanges}
         isSidebarVisible={isSidebarVisible}
         onToggleSidebar={() => setIsSidebarVisible(!isSidebarVisible)}
+      />
+
+      <FileImportDialog
+        repo={selectedRepoRef}
+        isOpen={importDialogOpen}
+        onClose={() => setImportDialogOpen(false)}
+        onImport={(importedFiles) => {
+          const newFiles = { ...files };
+          importedFiles.forEach(f => {
+            newFiles[f.path] = f.content;
+            trackFile(f.path, f.sha, f.content);
+          });
+          setFiles(newFiles);
+          toast.success(`Imported ${importedFiles.length} file(s) from GitHub.`);
+        }}
       />
 
       <div className="flex-1 min-h-0 flex overflow-hidden">
@@ -626,8 +691,9 @@ export function IDE() {
       </div>
 
       <StatusBar
+        currentFile={currentFile}
         language="C"
-        compiler="GCC"
+        compiler="VoltC"
         targetISA="Custom"
         cursorPosition={cursorPosition}
         compileStatus={compileStatus}
