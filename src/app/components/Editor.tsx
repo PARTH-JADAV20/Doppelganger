@@ -1,9 +1,12 @@
 import MonacoEditor, { OnMount } from "@monaco-editor/react";
 import { useTheme } from "next-themes";
 import { motion } from "motion/react";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlignLeft } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { checkCSyntax } from "../utils/c-syntax-checker";
+import { Button } from "./ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
+import { toast } from "sonner";
 
 interface EditorProps {
   code: string;
@@ -11,9 +14,10 @@ interface EditorProps {
   onChange: (value: string | undefined) => void;
   onCursorChange: (line: number, column: number) => void;
   onMount?: (editor: any) => void;
+  onFormat?: (code: string) => string;
 }
 
-export function Editor({ code, filePath, onChange, onCursorChange, onMount }: EditorProps) {
+export function Editor({ code, filePath, onChange, onCursorChange, onMount, onFormat }: EditorProps) {
   const { theme } = useTheme();
   const editorRef = useRef<any>(null);
   const monacoRef = useRef<any>(null);
@@ -27,6 +31,33 @@ export function Editor({ code, filePath, onChange, onCursorChange, onMount }: Ed
     editor.onDidChangeCursorPosition((e) => {
       onCursorChange(e.position.lineNumber, e.position.column);
     });
+
+    // Add format action to editor
+    if (onFormat) {
+      editor.addAction({
+        id: 'custom.formatCode',
+        label: '📝 Format Code',
+        keybindings: [
+          monaco.KeyMod.Shift | monaco.KeyMod.Alt | monaco.KeyCode.KeyF
+        ],
+        precondition: undefined,
+        keybindingContext: undefined,
+        contextMenuGroupId: 'navigation',
+        contextMenuOrder: 1.5,
+        run: (ed: any) => {
+          const currentCode = ed.getValue();
+          const formattedCode = onFormat(currentCode);
+          if (formattedCode !== currentCode) {
+            const position = ed.getPosition();
+            ed.executeEdits('', [{
+              range: ed.getModel().getFullModelRange(),
+              text: formattedCode
+            }]);
+            ed.setPosition(position);
+          }
+        }
+      });
+    }
 
     if (onMount) {
       onMount(editor);
@@ -102,13 +133,50 @@ export function Editor({ code, filePath, onChange, onCursorChange, onMount }: Ed
     }
   }, [code, filePath]);
 
+  const handleFormatClick = () => {
+    if (!onFormat || !editorRef.current) return;
+    const currentCode = editorRef.current.getValue();
+    const formattedCode = onFormat(currentCode);
+    if (formattedCode !== currentCode) {
+      const position = editorRef.current.getPosition();
+      editorRef.current.executeEdits('', [{
+        range: editorRef.current.getModel().getFullModelRange(),
+        text: formattedCode
+      }]);
+      editorRef.current.setPosition(position);
+      toast.success("Code formatted");
+    }
+  };
+
   return (
     <motion.div
       initial={{ scale: 0.98, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
       transition={{ duration: 0.2 }}
-      className="h-full rounded-2xl overflow-hidden border border-black/5 dark:border-white/10 bg-white/40 dark:bg-[#16162b]/30 backdrop-blur-xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)]"
+      className="h-full rounded-2xl overflow-hidden border border-black/5 dark:border-white/10 bg-white/40 dark:bg-[#16162b]/30 backdrop-blur-xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] relative"
     >
+      {onFormat && (
+        <div className="absolute top-2 right-2 z-10">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  onClick={handleFormatClick}
+                  variant="outline"
+                  size="sm"
+                  className="border-white/10 hover:bg-white/5 bg-white/80 dark:bg-[#16162b]/80 backdrop-blur-sm rounded-lg h-7 px-2 text-[11px] font-medium shadow-sm"
+                >
+                  <AlignLeft className="w-3.5 h-3.5 mr-1" />
+                  Format
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent className="text-[10px]">
+                Format Code (Shift+Alt+F)
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+      )}
       <MonacoEditor
         height="100%"
         defaultLanguage="c"
