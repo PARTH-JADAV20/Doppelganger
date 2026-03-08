@@ -20,6 +20,7 @@ import {
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { FileItem } from "../types/ide";
+import { useGitHubStore, GitHubFile } from "../../store/githubStore";
 
 interface SidebarProps {
   currentFile: string;
@@ -240,6 +241,10 @@ function FileTreeItem({
     );
   }
 
+  // Check if file is modified in GitHub tracking
+  const trackedFile = item.type === 'file' ? useGitHubStore(state => state.trackedFiles[item.path]) : null;
+  const isModified = trackedFile?.isModified;
+
   return (
     <div className="flex items-center gap-1 group">
       <div style={{ paddingLeft: `${depth * 12 + 12}px` }} className="flex-1 flex">
@@ -256,6 +261,7 @@ function FileTreeItem({
           <File className={`w-4 h-4 ${isActive ? "text-purple-500" : "text-gray-500 dark:text-gray-400"}`} />
           <span className={`${isActive ? "text-purple-600 dark:text-purple-400 font-medium" : "text-gray-700 dark:text-gray-300"} whitespace-nowrap`}>
             {item.name}
+            {isModified && <span className="text-orange-500 ml-1" title="Modified since GitHub import">*</span>}
           </span>
         </motion.button>
       </div>
