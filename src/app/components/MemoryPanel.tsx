@@ -28,16 +28,16 @@ export const InstructionTimeline = ({
   }, [currentIdx]);
 
   return (
-    <div className="bg-white/10 dark:bg-white/5 backdrop-blur-xl border border-white/20 rounded-2xl p-4 shadow-xl flex flex-col h-full overflow-hidden">
+    <div className="bg-white/50 dark:bg-white/5 backdrop-blur-xl border border-black/10 dark:border-white/20 rounded-2xl p-4 shadow-xl flex flex-col h-full overflow-hidden">
       <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
-        <div className="flex items-center gap-2 text-green-500 min-w-0">
+        <div className="flex items-center gap-2 text-green-600 dark:text-green-500 min-w-0">
           <Play size={18} className="shrink-0" />
           <h3 className="font-bold uppercase tracking-wider text-sm truncate">Timeline</h3>
         </div>
         {onStep && (
           <button
             onClick={onStep}
-            className="p-1 px-3 bg-green-500/20 hover:bg-green-500/30 text-green-400 rounded-lg border border-green-500/30 flex items-center gap-2 transition-all active:scale-95 shrink-0"
+            className="p-1 px-3 bg-green-100 dark:bg-green-500/20 hover:bg-green-200 dark:hover:bg-green-500/30 text-green-700 dark:text-green-400 rounded-lg border border-green-300 dark:border-green-500/30 flex items-center gap-2 transition-all active:scale-95 shrink-0"
           >
             <SkipForward size={14} />
             <span className="text-[10px] font-bold uppercase">Step</span>
@@ -53,8 +53,8 @@ export const InstructionTimeline = ({
           <motion.div
             key={`${inst}-${i}`}
             className={`flex items-center gap-3 p-2 rounded-lg border font-mono text-xs transition-all ${i === currentIdx
-                ? "bg-green-500/20 border-green-500/50 text-green-300 shadow-[0_0_15px_rgba(34,197,94,0.1)]"
-                : "border-transparent text-gray-400 opacity-60 hover:opacity-100"
+                ? "bg-green-100 dark:bg-green-500/20 border-green-300 dark:border-green-500/50 text-green-800 dark:text-green-300 shadow-[0_0_15px_rgba(34,197,94,0.1)]"
+                : "border-transparent text-gray-600 dark:text-gray-400 opacity-60 hover:opacity-100"
               }`}
           >
             <span className="w-6 text-right text-[10px] opacity-40">{i + 1}</span>
@@ -72,12 +72,12 @@ export const MemoryLayout = ({ stackDepth, totalSize }: { stackDepth: number, to
   const stackHeight = (stackDepth / totalSize) * 100;
 
   return (
-    <div className="bg-white/10 dark:bg-white/5 backdrop-blur-xl border border-white/20 rounded-2xl p-4 shadow-xl">
-      <div className="flex items-center gap-2 mb-4 text-orange-500">
+    <div className="bg-white/50 dark:bg-white/5 backdrop-blur-xl border border-black/10 dark:border-white/20 rounded-2xl p-4 shadow-xl">
+      <div className="flex items-center gap-2 mb-4 text-orange-600 dark:text-orange-500">
         <Layers size={18} />
         <h3 className="font-bold uppercase tracking-wider text-sm">Memory Map</h3>
       </div>
-      <div className="h-[150px] w-full bg-white/70 dark:bg-black/30 rounded-xl relative overflow-hidden border border-black/5 dark:border-white/10">
+      <div className="h-[150px] w-full bg-gray-100 dark:bg-black/30 rounded-xl relative overflow-hidden border border-gray-200 dark:border-white/10">
         {/* Stack Segment */}
         <motion.div
           initial={{ height: 0 }}
@@ -90,9 +90,9 @@ export const MemoryLayout = ({ stackDepth, totalSize }: { stackDepth: number, to
 
         {/* Free space */}
         <div className="absolute inset-x-0 bottom-0 h-full flex flex-col justify-end pointer-events-none">
-          <div className="p-4 flex flex-col items-center opacity-30">
+          <div className="p-4 flex flex-col items-center opacity-40 dark:opacity-30">
             <Database size={24} className="text-gray-500 dark:text-gray-400 mb-2" />
-            <span className="text-[10px] text-gray-700 dark:text-gray-400 font-bold uppercase tracking-widest">
+            <span className="text-[10px] text-gray-600 dark:text-gray-400 font-bold uppercase tracking-widest">
               Available
             </span>
           </div>
