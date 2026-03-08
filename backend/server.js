@@ -3,6 +3,12 @@ const cors = require('cors');
 const { exec, spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const axios = require('axios');
+const crypto = require('crypto');
+require('dotenv').config();
+
+// In-memory session store: Map<sessionId, githubAccessToken>
+const sessions = new Map();
 
 const app = express();
 app.use(cors());
@@ -179,6 +185,221 @@ app.post('/debug', (req, res) => {
             });
         }
     });
+});
+
+// ==================== GITHUB INTEGRATION ====================
+
+// 1. Initiate GitHub Login
+app.get('/auth/github', (req, res) => {
+    const clientId = process.env.GITHUB_CLIENT_ID;
+    const redirectUri = process.env.GITHUB_CALLBACK;
+    
+    if (!clientId || !redirectUri) {
+        return res.status(500).json({ error: "GitHub OAuth not configured on server" });
+    }
+
+    const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=repo`;
+    res.redirect(githubAuthUrl);
+});
+
+// 2. GitHub Callback
+app.get('/auth/github/callback', async (req, res) => {
+    const { code } = req.query;
+    if (!code) return res.status(400).send("No code provided");
+
+    try {
+        // Exchange code for AT
+        const tokenRes = await axios.post(
+            'https://github.com/login/oauth/access_token',
+            {
+                client_id: process.env.GITHUB_CLIENT_ID,
+                client_secret: process.env.GITHUB_CLIENT_SECRET,
+                code,
+                redirect_uri: process.env.GITHUB_CALLBACK
+            },
+            { headers: { Accept: 'application/json' } }
+        );
+
+        const accessToken = tokenRes.data.access_token;
+        if (!accessToken) throw new Error("Failed to get access token");
+
+        // Get GitHub user details
+        const userRes = await axios.get('https://api.github.com/user', {
+            headers: { Authorization: `Bearer ${accessToken}` }
+        });
+
+        const username = userRes.data.login;
+        // Generate secure session ID
+        const sessionId = crypto.randomBytes(32).toString('hex');
+        
+        // Store in memory map
+        sessions.set(sessionId, accessToken);
+
+        // Redirect back to frontend with session details
+        res.redirect(`http://localhost:5173?session_id=${sessionId}&username=${username}`);
+    } catch (err) {
+        console.error("GitHub Auth Error:", err.message);
+        res.status(500).send("Authentication failed");
+    }
+});
+
+// Middleware to check GitHub session
+const requireGithubSession = (req, res, next) => {
+    const sessionId = req.headers['x-session-id'];
+    if (!sessionId || !sessions.has(sessionId)) {
+        return res.status(401).json({ error: "Unauthorized: Invalid or missing session ID" });
+    }
+    req.githubToken = sessions.get(sessionId);
+    next();
+};
+
+// 3. Get User Repositories
+app.get('/github/repos', requireGithubSession, async (req, res) => {
+    try {
+        const response = await axios.get('https://api.github.com/user/repos?sort=updated&per_page=100', {
+            headers: { Authorization: `Bearer ${req.githubToken}` }
+        });
+        
+        const repos = response.data.map(repo => ({
+            id: repo.id,
+            name: repo.name,
+            full_name: repo.full_name,
+            owner: {
+                login: repo.owner.login
+            },
+            default_branch: repo.default_branch,
+            updated_at: repo.updated_at
+        }));
+        
+        res.json({ success: true, repos });
+    } catch (err) {
+        console.error("Fetch Repos Error:", err.message);
+        res.status(500).json({ error: "Failed to fetch repositories" });
+    }
+});
+
+// 4. Get Repository File Tree (Filtered for .c files)
+app.get('/github/repo-files', requireGithubSession, async (req, res) => {
+    const { owner, repo, branch } = req.query;
+    if (!owner || !repo || !branch) {
+        return res.status(400).json({ error: "Missing owner, repo, or branch" });
+    }
+
+    try {
+        const response = await axios.get(`https://api.github.com/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`, {
+            headers: { Authorization: `Bearer ${req.githubToken}` }
+        });
+
+        // Filter for only .c files
+        const files = response.data.tree
+            .filter(item => item.type === 'blob' && item.path.endsWith('.c'))
+            .map(item => ({
+                path: item.path,
+                sha: item.sha,
+                size: item.size
+            }));
+
+        res.json({ success: true, files });
+    } catch (err) {
+        console.error("Fetch Repo Files Error:", err.message);
+        res.status(500).json({ error: "Failed to fetch repository files" });
+    }
+});
+
+// 5. Get File Content
+app.get('/github/file-content', requireGithubSession, async (req, res) => {
+    const { owner, repo, path: filePath } = req.query;
+    if (!owner || !repo || !filePath) {
+        return res.status(400).json({ error: "Missing owner, repo, or path" });
+    }
+
+    try {
+        const response = await axios.get(`https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`, {
+            headers: { Authorization: `Bearer ${req.githubToken}` }
+        });
+
+        const content = Buffer.from(response.data.content, 'base64').toString('utf8');
+        res.json({ 
+            success: true, 
+            content,
+            sha: response.data.sha 
+        });
+    } catch (err) {
+        console.error("Fetch File Content Error:", err.message);
+        res.status(500).json({ error: "Failed to fetch file content" });
+    }
+});
+
+// 6. Push Changes to GitHub (Supports both create and update)
+app.put('/github/push', requireGithubSession, async (req, res) => {
+    const { owner, repo, path: filePath, content, sha, message } = req.body;
+    
+    // content can be empty string, so check for undefined
+    if (!owner || !repo || !filePath || content === undefined) {
+        return res.status(400).json({ error: "Missing required fields for push" });
+    }
+
+    try {
+        const base64Content = Buffer.from(content, 'utf8').toString('base64');
+        
+        const payload = {
+            message: message || `Update ${filePath} from VoltC IDE`,
+            content: base64Content,
+        };
+
+        if (sha) {
+            payload.sha = sha;
+        }
+        
+        const response = await axios.put(`https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`, payload, {
+            headers: { Authorization: `Bearer ${req.githubToken}` }
+        });
+
+        res.json({ 
+            success: true, 
+            newSha: response.data.content.sha,
+            commit: response.data.commit.message
+        });
+    } catch (err) {
+        console.error("Push Error:", err.response?.data || err.message);
+        res.status(500).json({ error: err.response?.data?.message || "Failed to push changes to GitHub" });
+    }
+});
+
+// 7. Create New Repository
+app.post('/github/create-repo', requireGithubSession, async (req, res) => {
+    const { name, description, private: isPrivate } = req.body;
+
+    if (!name) {
+        return res.status(400).json({ error: "Repository name is required" });
+    }
+
+    try {
+        const response = await axios.post('https://api.github.com/user/repos', {
+            name,
+            description,
+            private: isPrivate || false,
+            auto_init: true // Create a README so the repo has a default branch
+        }, {
+            headers: { Authorization: `Bearer ${req.githubToken}` }
+        });
+
+        res.json({
+            success: true,
+            repo: {
+                id: response.data.id,
+                name: response.data.name,
+                full_name: response.data.full_name,
+                owner: {
+                    login: response.data.owner.login
+                },
+                default_branch: response.data.default_branch
+            }
+        });
+    } catch (err) {
+        console.error("Create Repo Error:", err.response?.data || err.message);
+        res.status(500).json({ error: err.response?.data?.message || "Failed to create repository" });
+    }
 });
 
 const PORT = 3001;
