@@ -4,14 +4,17 @@ import { Play, SkipForward, ArrowRight, Layers, Database } from "lucide-react";
 import { RegisterPanel, StackPanel, VariableTable, ExecutionStats } from "./DebuggerSegments";
 
 // --- Instruction Timeline Panel ---
+// STEP 6: Instruction Timeline - Enhanced to show dynamic trace information
 export const InstructionTimeline = ({
   instructions,
   currentIdx,
-  onStep
+  onStep,
+  trace
 }: {
   instructions: string[],
   currentIdx: number,
-  onStep?: () => void
+  onStep?: () => void,
+  trace?: any[]
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -27,12 +30,28 @@ export const InstructionTimeline = ({
     }
   }, [currentIdx]);
 
+  // Get additional info for each instruction from trace
+  const getInstructionInfo = (index: number) => {
+    if (!trace || !trace[index]) return null;
+    const step = trace[index];
+    return {
+      pc: typeof step.pc === 'number' ? step.pc : index,
+      func: step.func || 'unknown',
+      tick: typeof step.tick === 'number' ? step.tick : index
+    };
+  };
+
   return (
     <div className="bg-white/50 dark:bg-white/5 backdrop-blur-xl border border-black/10 dark:border-white/20 rounded-2xl p-4 shadow-xl flex flex-col h-full overflow-hidden">
       <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
         <div className="flex items-center gap-2 text-green-600 dark:text-green-500 min-w-0">
           <Play size={18} className="shrink-0" />
           <h3 className="font-bold uppercase tracking-wider text-sm truncate">Timeline</h3>
+          {trace && trace.length > 0 && (
+            <span className="text-[10px] text-gray-500 dark:text-gray-400">
+              ({trace.length} steps)
+            </span>
+          )}
         </div>
         {onStep && (
           <button
@@ -49,19 +68,46 @@ export const InstructionTimeline = ({
         ref={scrollRef}
         className="flex-1 overflow-y-auto hide-scrollbar space-y-1 pr-2"
       >
-        {instructions.map((inst, i) => (
-          <motion.div
-            key={`${inst}-${i}`}
-            className={`flex items-center gap-3 p-2 rounded-lg border font-mono text-xs transition-all ${i === currentIdx
-                ? "bg-green-100 dark:bg-green-500/20 border-green-300 dark:border-green-500/50 text-green-800 dark:text-green-300 shadow-[0_0_15px_rgba(34,197,94,0.1)]"
-                : "border-transparent text-gray-600 dark:text-gray-400 opacity-60 hover:opacity-100"
-              }`}
-          >
-            <span className="w-6 text-right text-[10px] opacity-40">{i + 1}</span>
-            <span className="flex-1">{inst}</span>
-            {i === currentIdx && <ArrowRight size={14} className="animate-pulse" />}
-          </motion.div>
-        ))}
+        {instructions.length === 0 ? (
+          <div className="text-center py-8 text-gray-500 dark:text-gray-400 text-sm">
+            No instructions to display
+          </div>
+        ) : (
+          instructions.map((inst, i) => {
+            const info = getInstructionInfo(i);
+            const isActive = i === currentIdx;
+            
+            return (
+              <motion.div
+                key={`${inst}-${i}-${info?.pc || i}`}
+                className={`flex items-start gap-2 p-2 rounded-lg border font-mono text-xs transition-all ${
+                  isActive
+                    ? "bg-green-100 dark:bg-green-500/20 border-green-300 dark:border-green-500/50 text-green-800 dark:text-green-300 shadow-[0_0_15px_rgba(34,197,94,0.1)]"
+                    : "border-transparent text-gray-600 dark:text-gray-400 opacity-60 hover:opacity-100"
+                }`}
+              >
+                <span className="w-8 text-right text-[10px] opacity-60 shrink-0 pt-0.5">
+                  {i + 1}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold">{inst}</span>
+                    {isActive && <ArrowRight size={12} className="animate-pulse shrink-0" />}
+                  </div>
+                  {info && (
+                    <div className="flex items-center gap-3 mt-1 text-[9px] opacity-70">
+                      <span>PC: {info.pc}</span>
+                      {info.func && info.func !== 'unknown' && (
+                        <span className="text-purple-600 dark:text-purple-400">@{info.func}</span>
+                      )}
+                      <span>tick: {info.tick}</span>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            );
+          })
+        )}
       </div>
     </div>
   );
@@ -194,7 +240,16 @@ export const MemoryPanel = ({
     SP: 1024
   };
 
-  const variables = current?.vars || [];
+  // STEP 5: Variables - Extract and map variables from trace data
+  // Backend sends: {name, addr, val, offset}
+  // Component expects: {name, address, value}
+  const variables = current?.vars 
+    ? current.vars.map((v: any) => ({
+        name: v.name || 'unknown',
+        address: v.addr || (typeof v.offset === 'number' && current.bp ? `0x${(current.bp + v.offset).toString(16).toUpperCase()}` : '0x0'),
+        value: typeof v.val === 'number' ? v.val : (typeof v.value === 'number' ? v.value : 0)
+      }))
+    : [];
 
   // STEP 3: Stack Frames - Reconstruct call stack dynamically from trace data
   // The VM uses BP (Base Pointer) to track stack frames
@@ -328,10 +383,12 @@ export const MemoryPanel = ({
           spMax={typeof current?.sp_max === 'number' ? current.sp_max : undefined}
         />
         <div className="flex-1 min-h-[300px]">
+          {/* STEP 6: Instruction Timeline - Pass trace data for enhanced display */}
           <InstructionTimeline
-            instructions={allInstructions.length > 0 ? allInstructions : ['No instructions']}
+            instructions={allInstructions.length > 0 ? allInstructions : []}
             currentIdx={step >= 0 && step < allInstructions.length ? step : 0}
             onStep={onNext}
+            trace={trace}
           />
         </div>
       </div>
