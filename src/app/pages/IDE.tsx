@@ -50,16 +50,19 @@ int main() {
     printf("Hello, World!\\n");
     return 0;
 }`,
-  "examples/fibonacci.c": `int fibonacci(int n) {
-    if (n <= 1) return n;
+  "examples/fibonacci.c": `#include <stdio.h>
+
+int fibonacci(int n) {
+    if (n <= 1) {
+        return n;
+    }
     return fibonacci(n - 1) + fibonacci(n - 2);
 }
 
 int main() {
-    int n = 10;
-    printf("Fibonacci recursion demo\\n");
-    printf("Calculating fib(10)...\\n");
-    printf("Result: %d\\n", fibonacci(n));
+    int n = 5;
+    int result = fibonacci(n);
+    printf("Fibonacci of %d is %d\\n", n, result);
     return 0;
 }`,
   "examples/arithmetic.c": `int main() {
@@ -490,6 +493,9 @@ export function IDE() {
       const next = debugStep + 1;
       setDebugStep(next);
       updateStatsFromTrace(debugTrace[next]);
+      console.log(`Debug step: ${next + 1}/${debugTrace.length}`); // Debug log
+    } else {
+      console.log("Reached end of trace"); // Debug log
     }
   };
 

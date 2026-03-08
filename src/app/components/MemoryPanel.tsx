@@ -49,17 +49,24 @@ export const InstructionTimeline = ({
           <h3 className="font-bold uppercase tracking-wider text-sm truncate">Timeline</h3>
           {trace && trace.length > 0 && (
             <span className="text-[10px] text-gray-500 dark:text-gray-400">
-              ({trace.length} steps)
+              Step {currentIdx + 1} / {trace.length}
             </span>
           )}
         </div>
         {onStep && (
           <button
             onClick={onStep}
-            className="p-1 px-3 bg-green-100 dark:bg-green-500/20 hover:bg-green-200 dark:hover:bg-green-500/30 text-green-700 dark:text-green-400 rounded-lg border border-green-300 dark:border-green-500/30 flex items-center gap-2 transition-all active:scale-95 shrink-0"
+            disabled={!trace || currentIdx >= trace.length - 1}
+            className={`p-1 px-3 rounded-lg border flex items-center gap-2 transition-all active:scale-95 shrink-0 ${
+              !trace || currentIdx >= trace.length - 1
+                ? "bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 border-gray-300 dark:border-gray-700 cursor-not-allowed"
+                : "bg-green-100 dark:bg-green-500/20 hover:bg-green-200 dark:hover:bg-green-500/30 text-green-700 dark:text-green-400 border-green-300 dark:border-green-500/30"
+            }`}
           >
             <SkipForward size={14} />
-            <span className="text-[10px] font-bold uppercase">Step</span>
+            <span className="text-[10px] font-bold uppercase">
+              {!trace || currentIdx >= trace.length - 1 ? "End" : "Step"}
+            </span>
           </button>
         )}
       </div>
