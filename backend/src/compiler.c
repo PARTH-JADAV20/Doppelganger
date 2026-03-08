@@ -148,6 +148,7 @@ void match(TokenType t) {
     else { fprintf(stderr, "Syntax error at line %d: expected type %d got type %d ('%s')\n", peek().line, t, peek().type, peek().text); exit(1); }
 }
 
+// Original Parser State
 typedef struct {
     char name[64];
     int offset;
@@ -156,6 +157,24 @@ typedef struct {
 Var vars[100];
 int var_count = 0;
 int current_offset = 0;
+
+// Debug Metadata structures
+typedef struct {
+    char name[64];
+    int offset;
+} DebugVar;
+
+typedef struct {
+    char name[64];
+    int start_pc;
+    int end_pc;
+    DebugVar variables[50];
+    int var_count;
+} DebugFunc;
+
+DebugFunc debug_functions[50];
+int debug_func_count = 0;
+DebugFunc* current_dbg_func = NULL;
 
 int get_var_offset(const char* name) {
     for (int i=var_count-1; i>=0; i--) {
@@ -310,6 +329,14 @@ void parse_statement() {
         strcpy(vars[var_count].name, id.text);
         current_offset++; // local vars are negative offsets in stack frame
         vars[var_count].offset = -current_offset;
+        
+        // Add to debug info
+        if (current_dbg_func) {
+            DebugVar* dv = &current_dbg_func->variables[current_dbg_func->var_count++];
+            strcpy(dv->name, id.text);
+            dv->offset = -current_offset;
+        }
+
         fprintf(out, "; VAR %s %d\n", vars[var_count].name, vars[var_count].offset);
         var_count++;
         
@@ -396,6 +423,14 @@ void parse_statement() {
             strcpy(vars[var_count].name, id.text);
             current_offset++;
             vars[var_count].offset = -current_offset;
+            
+            // Add to debug info
+            if (current_dbg_func) {
+                DebugVar* dv = &current_dbg_func->variables[current_dbg_func->var_count++];
+                strcpy(dv->name, id.text);
+                dv->offset = -current_offset;
+            }
+
             fprintf(out, "; VAR %s %d\n", vars[var_count].name, vars[var_count].offset);
             var_count++;
             match(TOK_ASSIGN);
@@ -478,6 +513,13 @@ void parse_function() {
     // reset locals scope
     var_count = 0;
     current_offset = 0;
+
+    // Start new debug function
+    current_dbg_func = &debug_functions[debug_func_count++];
+    strcpy(current_dbg_func->name, id.text);
+    current_dbg_func->start_pc = -1; // to be filled later
+    current_dbg_func->end_pc = -1;
+    current_dbg_func->var_count = 0;
     
     match(TOK_LPAREN);
     if (peek().type != TOK_RPAREN) {
@@ -485,6 +527,14 @@ void parse_function() {
         Token arg = consume();
         strcpy(vars[var_count].name, arg.text);
         vars[var_count].offset = 2; // arg is at BP + 2
+        
+        // Add to debug info
+        if (current_dbg_func) {
+            DebugVar* dv = &current_dbg_func->variables[current_dbg_func->var_count++];
+            strcpy(dv->name, arg.text);
+            dv->offset = 2;
+        }
+
         fprintf(out, "; VAR %s %d\n", vars[var_count].name, vars[var_count].offset);
         var_count++;
         // NOTE: only handling 1 param for simplicity, enough for fib(n)
@@ -584,6 +634,66 @@ int main(int argc, char** argv) {
     fclose(out);
     
     optimize_file(argv[2]);
+    
+    // Generate debug JSON by parsing optimized ASM for PC ranges
+    char debug_path[256];
+    strcpy(debug_path, argv[2]);
+    char* ext = strstr(debug_path, ".asm");
+    if (ext) strcpy(ext, ".debug.json");
+    else strcat(debug_path, ".debug.json");
+
+    FILE* final_asm = fopen(argv[2], "r");
+    if (final_asm) {
+        char line[256];
+        int pc = 0;
+        while (fgets(line, sizeof(line), final_asm)) {
+            char* trimmed = line;
+            while(isspace(*trimmed)) trimmed++;
+            if (!*trimmed || *trimmed == ';') continue;
+            
+            // Check if it's a label
+            char* colon = strchr(trimmed, ':');
+            if (colon) {
+                *colon = '\0';
+                // Check if this label is a function name
+                for (int i=0; i<debug_func_count; i++) {
+                    if (strcmp(debug_functions[i].name, trimmed) == 0) {
+                        debug_functions[i].start_pc = pc;
+                        // End previous function
+                        if (i > 0) debug_functions[i-1].end_pc = pc - 1;
+                    }
+                }
+                *colon = ':';
+                continue;
+            }
+
+            // Real instruction
+            pc++;
+        }
+        // End last function
+        if (debug_func_count > 0) debug_functions[debug_func_count-1].end_pc = pc - 1;
+        fclose(final_asm);
+    }
+
+    FILE* dbg = fopen(debug_path, "w");
+    fprintf(dbg, "{\n  \"functions\": {\n");
+    for (int i=0; i<debug_func_count; i++) {
+        fprintf(dbg, "    \"%s\": { \"start\": %d, \"end\": %d }%s\n", 
+            debug_functions[i].name, debug_functions[i].start_pc, debug_functions[i].end_pc,
+            (i == debug_func_count - 1) ? "" : ",");
+    }
+    fprintf(dbg, "  },\n  \"variables\": {\n");
+    for (int i=0; i<debug_func_count; i++) {
+        fprintf(dbg, "    \"%s\": [\n", debug_functions[i].name);
+        for (int j=0; j<debug_functions[i].var_count; j++) {
+            fprintf(dbg, "      { \"name\": \"%s\", \"offset\": %d }%s\n",
+                debug_functions[i].variables[j].name, debug_functions[i].variables[j].offset,
+                (j == debug_functions[i].var_count - 1) ? "" : ",");
+        }
+        fprintf(dbg, "    ]%s\n", (i == debug_func_count - 1) ? "" : ",");
+    }
+    fprintf(dbg, "  }\n}\n");
+    fclose(dbg);
     
     return 0;
 }
