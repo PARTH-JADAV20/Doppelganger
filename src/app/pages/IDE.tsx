@@ -510,6 +510,17 @@ export function IDE() {
     }
   };
 
+    const handleDebugPrev = () => {
+    if (debugStep > 0) {
+      const prev = debugStep - 1;
+      setDebugStep(prev);
+      updateStatsFromTrace(debugTrace[prev]);
+      console.log(`Debug step: ${prev + 1}/${debugTrace.length}`);
+    } else {
+      console.log("Reached beginning of trace");
+    }
+  };
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -617,6 +628,7 @@ export function IDE() {
                     debugStep={debugStep}
                     debugTrace={debugTrace}
                     onDebugNext={handleDebugNext}
+                    onDebugPrev={handleDebugPrev}
                   />
                 </div>
               </Panel>

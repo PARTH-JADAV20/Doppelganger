@@ -9,11 +9,13 @@ export const InstructionTimeline = ({
   instructions,
   currentIdx,
   onStep,
+  onPrevStep,
   trace
 }: {
   instructions: string[],
   currentIdx: number,
   onStep?: () => void,
+  onPrevStep?: () => void,
   trace?: any[]
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -53,22 +55,36 @@ export const InstructionTimeline = ({
             </span>
           )}
         </div>
-        {onStep && (
-          <button
-            onClick={onStep}
-            disabled={!trace || currentIdx >= trace.length - 1}
-            className={`p-1 px-3 rounded-lg border flex items-center gap-2 transition-all active:scale-95 shrink-0 ${
-              !trace || currentIdx >= trace.length - 1
+        <div className="flex items-center gap-2">
+          {onPrevStep && (
+            <button
+              onClick={onPrevStep}
+              disabled={!trace || currentIdx <= 0}
+              className={`p-1 px-3 rounded-lg border flex items-center gap-2 transition-all active:scale-95 shrink-0 ${!trace || currentIdx <= 0
+                ? "bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 border-gray-300 dark:border-gray-700 cursor-not-allowed"
+                : "bg-blue-100 dark:bg-blue-500/20 hover:bg-blue-200 dark:hover:bg-blue-500/30 text-blue-700 dark:text-blue-400 border-blue-300 dark:border-blue-500/30"
+                }`}
+            >
+              <SkipForward size={14} className="rotate-180" />
+              <span className="text-[10px] font-bold uppercase">Prev</span>
+            </button>
+          )}
+          {onStep && (
+            <button
+              onClick={onStep}
+              disabled={!trace || currentIdx >= trace.length - 1}
+              className={`p-1 px-3 rounded-lg border flex items-center gap-2 transition-all active:scale-95 shrink-0 ${!trace || currentIdx >= trace.length - 1
                 ? "bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 border-gray-300 dark:border-gray-700 cursor-not-allowed"
                 : "bg-green-100 dark:bg-green-500/20 hover:bg-green-200 dark:hover:bg-green-500/30 text-green-700 dark:text-green-400 border-green-300 dark:border-green-500/30"
-            }`}
-          >
-            <SkipForward size={14} />
-            <span className="text-[10px] font-bold uppercase">
-              {!trace || currentIdx >= trace.length - 1 ? "End" : "Step"}
-            </span>
-          </button>
-        )}
+                }`}
+            >
+              <SkipForward size={14} />
+              <span className="text-[10px] font-bold uppercase">
+                {!trace || currentIdx >= trace.length - 1 ? "End" : "Step"}
+              </span>
+            </button>
+          )}
+        </div>
       </div>
 
       <div
@@ -83,15 +99,14 @@ export const InstructionTimeline = ({
           instructions.map((inst, i) => {
             const info = getInstructionInfo(i);
             const isActive = i === currentIdx;
-            
+
             return (
               <motion.div
                 key={`${inst}-${i}-${info?.pc || i}`}
-                className={`flex items-start gap-2 p-2 rounded-lg border font-mono text-xs transition-all ${
-                  isActive
-                    ? "bg-green-100 dark:bg-green-500/20 border-green-300 dark:border-green-500/50 text-green-800 dark:text-green-300 shadow-[0_0_15px_rgba(34,197,94,0.1)]"
-                    : "border-transparent text-gray-600 dark:text-gray-400 opacity-60 hover:opacity-100"
-                }`}
+                className={`flex items-start gap-2 p-2 rounded-lg border font-mono text-xs transition-all ${isActive
+                  ? "bg-green-100 dark:bg-green-500/20 border-green-300 dark:border-green-500/50 text-green-800 dark:text-green-300 shadow-[0_0_15px_rgba(34,197,94,0.1)]"
+                  : "border-transparent text-gray-600 dark:text-gray-400 opacity-60 hover:opacity-100"
+                  }`}
               >
                 <span className="w-8 text-right text-[10px] opacity-60 shrink-0 pt-0.5">
                   {i + 1}
@@ -122,14 +137,14 @@ export const InstructionTimeline = ({
 
 // --- Memory Layout Visualization ---
 // STEP 4: Memory Map - Display dynamic memory layout from trace data
-export const MemoryLayout = ({ 
-  stackDepth, 
-  totalSize, 
-  sp, 
-  bp, 
-  spMax 
-}: { 
-  stackDepth: number, 
+export const MemoryLayout = ({
+  stackDepth,
+  totalSize,
+  sp,
+  bp,
+  spMax
+}: {
+  stackDepth: number,
   totalSize: number,
   sp?: number,
   bp?: number,
@@ -137,11 +152,11 @@ export const MemoryLayout = ({
 }) => {
   // Calculate stack usage percentage
   const stackHeight = totalSize > 0 ? Math.max(0, Math.min(100, (stackDepth / totalSize) * 100)) : 0;
-  
+
   // Calculate positions for SP and BP markers (if provided)
   // Stack grows downward, so SP at bottom means more stack used
-  const spPosition = sp !== undefined && spMax !== undefined && spMax > 0 
-    ? ((spMax - sp) / spMax) * 100 
+  const spPosition = sp !== undefined && spMax !== undefined && spMax > 0
+    ? ((spMax - sp) / spMax) * 100
     : stackHeight;
   const bpPosition = bp !== undefined && spMax !== undefined && spMax > 0
     ? ((spMax - bp) / spMax) * 100
@@ -203,11 +218,43 @@ export const MemoryLayout = ({
         {/* Free space */}
         <div className="absolute inset-x-0 bottom-0 h-full flex flex-col justify-end pointer-events-none">
           <div className="p-4 flex flex-col items-center opacity-40 dark:opacity-30">
-            <Database size={24} className="text-gray-500 dark:text-gray-400 mb-2" />
-            <span className="text-[10px] text-gray-600 dark:text-gray-400 font-bold uppercase tracking-widest">
-              Available ({Math.round(100 - stackHeight)}%)
+            <div className="relative mb-2">
+              <Database size={24} className="text-gray-500 dark:text-gray-400" />
+              <motion.div
+                animate={{ scale: [1, 1.2, 1] }}
+                transition={{ repeat: Infinity, duration: 2 }}
+                className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full"
+              />
+            </div>
+            <span className="text-[10px] text-gray-600 dark:text-gray-400 font-bold uppercase tracking-widest text-center">
+              Available Memory<br />
+              <span className="font-mono text-xs opacity-80">{Math.round(100 - stackHeight)}% FREE</span>
             </span>
           </div>
+        </div>
+
+        {/* Address markers */}
+        <div className="absolute left-0 top-0 h-full w-1.5 flex flex-col justify-between py-1 bg-black/10">
+          <div className="w-full h-px bg-white/20" />
+          <div className="w-full h-px bg-white/10" />
+          <div className="w-full h-px bg-white/10" />
+          <div className="w-full h-px bg-white/20" />
+        </div>
+      </div>
+
+      {/* Legend */}
+      <div className="mt-3 flex items-center justify-center gap-4 text-[10px] font-bold uppercase tracking-tighter">
+        <div className="flex items-center gap-1.5">
+          <div className="w-2 h-2 rounded-full bg-purple-500" />
+          <span className="text-gray-600 dark:text-gray-400">Stack</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-2 h-2 rounded-full bg-blue-500" />
+          <span className="text-gray-600 dark:text-gray-400">BP Marker</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-2 h-2 rounded-full bg-green-500" />
+          <span className="text-gray-600 dark:text-gray-400">SP Marker</span>
         </div>
       </div>
     </div>
@@ -218,15 +265,17 @@ export const MemoryLayout = ({
 export const MemoryPanel = ({
   trace,
   step,
-  onNext
+  onNext,
+  onPrev
 }: {
   trace: any[],
   step: number,
-  onNext?: () => void
+  onNext?: () => void,
+  onPrev?: () => void
 }) => {
   // Get current step data from trace, or use empty state if no trace
-  const current = trace && trace.length > 0 && step >= 0 && step < trace.length 
-    ? trace[step] 
+  const current = trace && trace.length > 0 && step >= 0 && step < trace.length
+    ? trace[step]
     : null;
 
   // Process trace into component-friendly data
@@ -250,12 +299,12 @@ export const MemoryPanel = ({
   // STEP 5: Variables - Extract and map variables from trace data
   // Backend sends: {name, addr, val, offset}
   // Component expects: {name, address, value}
-  const variables = current?.vars 
+  const variables = current?.vars
     ? current.vars.map((v: any) => ({
-        name: v.name || 'unknown',
-        address: v.addr || (typeof v.offset === 'number' && current.bp ? `0x${(current.bp + v.offset).toString(16).toUpperCase()}` : '0x0'),
-        value: typeof v.val === 'number' ? v.val : (typeof v.value === 'number' ? v.value : 0)
-      }))
+      name: v.name || 'unknown',
+      address: v.addr || (typeof v.offset === 'number' && current.bp ? `0x${(current.bp + v.offset).toString(16).toUpperCase()}` : '0x0'),
+      value: typeof v.val === 'number' ? v.val : (typeof v.value === 'number' ? v.value : 0)
+    }))
     : [];
 
   // STEP 3: Stack Frames - Reconstruct call stack dynamically from trace data
@@ -265,39 +314,39 @@ export const MemoryPanel = ({
   // So: Lower BP = deeper call, Higher BP = caller
   const reconstructCallStack = (): string[] => {
     if (!trace || trace.length === 0 || !current) return [];
-    
+
     const callStack: string[] = [];
     const currentBP = typeof current.bp === 'number' ? current.bp : null;
-    
+
     if (currentBP === null) {
       // Fallback: just use current function if BP is not available
       return current.func ? [current.func] : [];
     }
-    
+
     // Collect all unique BP values and their corresponding functions
     // Map BP -> function name
     const bpToFunc = new Map<number, string>();
-    
+
     // Scan through trace to build BP -> function mapping
     for (let i = 0; i <= step; i++) {
       const stepData = trace[i];
       if (!stepData || typeof stepData.bp !== 'number' || !stepData.func) continue;
-      
+
       const stepBP = stepData.bp;
       const stepFunc = stepData.func;
-      
+
       // Only update if this BP hasn't been seen or if we have a better function name
       if (!bpToFunc.has(stepBP) || stepFunc !== 'unknown') {
         bpToFunc.set(stepBP, stepFunc);
       }
     }
-    
+
     // Build call stack by finding all BP values >= currentBP (callers)
     // and sorting them (higher BP = caller, lower BP = callee)
     const bps = Array.from(bpToFunc.keys())
       .filter(bp => bp >= currentBP) // Only include current frame and callers
       .sort((a, b) => b - a); // Sort descending (caller first)
-    
+
     // Build the call stack from BP chain
     for (const bp of bps) {
       const funcName = bpToFunc.get(bp);
@@ -308,15 +357,15 @@ export const MemoryPanel = ({
         }
       }
     }
-    
+
     // If no call stack found, at least show current function
     if (callStack.length === 0 && current.func && current.func !== 'unknown') {
       callStack.push(current.func);
     }
-    
+
     return callStack;
   };
-  
+
   const stackFrames = reconstructCallStack();
 
   // STEP 2: Execution Stats - Calculate all stats dynamically from trace data
@@ -382,8 +431,8 @@ export const MemoryPanel = ({
       <div className="space-y-4 flex flex-col min-h-[500px] min-w-0 overflow-hidden">
         <ExecutionStats stats={stats} />
         {/* STEP 4: Memory Map - Pass dynamic memory data */}
-        <MemoryLayout 
-          stackDepth={current?.sp_max && current?.sp ? current.sp_max - current.sp : 0} 
+        <MemoryLayout
+          stackDepth={current?.sp_max && current?.sp ? current.sp_max - current.sp : 0}
           totalSize={current?.sp_max || 1024}
           sp={typeof current?.sp === 'number' ? current.sp : undefined}
           bp={typeof current?.bp === 'number' ? current.bp : undefined}
@@ -395,6 +444,7 @@ export const MemoryPanel = ({
             instructions={allInstructions.length > 0 ? allInstructions : []}
             currentIdx={step >= 0 && step < allInstructions.length ? step : 0}
             onStep={onNext}
+            onPrevStep={onPrev}
             trace={trace}
           />
         </div>
