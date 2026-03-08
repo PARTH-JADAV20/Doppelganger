@@ -43,7 +43,7 @@ import { FileItem } from "../types/ide";
 import { useGitHubStore } from "../../store/githubStore";
 import { FileImportDialog } from "../components/FileImportDialog";
 import { formatCCode } from "../utils/c-formatter";
-import { API_URL } from "../utils/api";
+import { API_URL, validateSession } from "../utils/api";
 
 export type { FileItem };
 
@@ -273,6 +273,25 @@ export function IDE() {
       toast.success(`Successfully connected to GitHub as ${username}`);
     }
   }, [setSession]);
+
+  // Validate existing session on app load
+  useEffect(() => {
+    const checkSession = async () => {
+      const storedSessionId = useGitHubStore.getState().sessionId;
+      const storedUsername = useGitHubStore.getState().username;
+
+      if (storedSessionId && storedUsername) {
+        const isValid = await validateSession(storedSessionId);
+        
+        if (!isValid) {
+          toast.error("Your GitHub session has expired. Please reconnect.");
+          clearSession();
+        }
+      }
+    };
+
+    checkSession();
+  }, [clearSession]);
 
   // Save files to localStorage whenever they change
   useEffect(() => {
