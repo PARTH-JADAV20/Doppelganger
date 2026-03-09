@@ -236,7 +236,7 @@ export function IDE() {
     return merged;
   });
 
-  const { setSession, trackFile, markFileModified, trackedFiles } = useGitHubStore();
+  const { setSession, clearSession, trackFile, markFileModified, trackedFiles } = useGitHubStore();
 
   const [fileTree, setFileTree] = useState<FileItem[]>(() => buildFileTree(files));
   const [currentFile, setCurrentFile] = useState("src/main.c");
